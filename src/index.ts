@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server'
 import Handlebars from 'handlebars'
 import { Hono } from 'hono'
 import Parser from 'rss-parser'
+import { feeds } from './feeds.js'
 
 const app = new Hono()
 const parser = new Parser()
@@ -19,13 +20,6 @@ const homeTemplate = Handlebars.compile(
 const feedTemplate = Handlebars.compile(
   fs.readFileSync(join(templateDir, 'feeds.html'), 'utf-8'),
 )
-
-const feeds = [
-  { title: 'The Verge', url: 'https://www.theverge.com/rss/index.xml' },
-  { title: 'CNBC', url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114' },
-  { title: 'Hacker News', url: 'https://news.ycombinator.com/rss' },
-  { title: 'NBC News', url: 'https://feeds.nbcnews.com/nbcnews/public/news' },
-].sort((a, b) => a.title.localeCompare(b.title))
 
 app.get('/', (c) => {
   const feedsWithEncoded = feeds.map(f => ({
