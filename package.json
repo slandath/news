@@ -16,11 +16,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
-    "hono": "^4.11.5"
+    "hono": "^4.11.5",
+    "nunjucks": "^3.2.4",
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.2.0",
     "@types/node": "^25.0.10",
+    "@types/nunjucks": "^3.2.6",
     "eslint": "^9.39.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
