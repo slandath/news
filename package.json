@@ -8,12 +8,21 @@
   "keywords": [],
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint",
     "lint:fix": "eslint --fix"
   },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "hono": "^4.11.5"
+  },
   "devDependencies": {
     "@antfu/eslint-config": "^7.2.0",
-    "eslint": "^9.39.2"
+    "@types/node": "^25.0.10",
+    "eslint": "^9.39.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
