@@ -1,9 +1,8 @@
+import fs from 'node:fs'
 import { serve } from '@hono/node-server'
+import Handlebars from 'handlebars'
 import { Hono } from 'hono'
-import * as nunjucks from 'nunjucks'
 import Parser from 'rss-parser'
-
-nunjucks.configure('src/templates', { autoescape: true })
 
 const app = new Hono()
 const parser = new Parser()
@@ -14,8 +13,19 @@ const feeds = [
   { title: 'NBC News', url: 'https://feeds.nbcnews.com/nbcnews/public/news' },
 ].sort((a, b) => a.title.localeCompare(b.title))
 
+const homeTemplate = Handlebars.compile(
+  fs.readFileSync('src/templates/home.html', 'utf-8'),
+)
+const feedTemplate = Handlebars.compile(
+  fs.readFileSync('src/templates/feeds.html', 'utf-8'),
+)
+
 app.get('/', (c) => {
-  const html = nunjucks.render('home.html', { feeds })
+  const feedsWithEncoded = feeds.map(f => ({
+    ...f,
+    encodedURL: encodeURIComponent(f.url),
+  }))
+  const html = homeTemplate({ feeds: feedsWithEncoded })
   return c.html(html)
 })
 
@@ -25,7 +35,7 @@ app.get('/feed', async (c) => {
     const feed = await parser.parseURL(
       feedURL,
     )
-    const html = nunjucks.render('feeds.html', { feed, feeds })
+    const html = feedTemplate({ feed, feeds })
     return c.html(html)
   }
   catch (error) {

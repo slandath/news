@@ -8,12 +8,12 @@
 <body>
     <h1>{{ feed.title }}</h1>
       <ul>
-    {% for item in feed.items %}
+    {{#each feed.items}}
       <li>
-        <a href="{{ item.link }}">{{ item.title }}</a>
-        <p>{{ item.pubDate }}</p>
+        <a href="{{this.link}}">{{ this.title }}</a>
+        <p>{{ this.pubDate }}</p>
       </li>
-    {% endfor %}
+    {{/each}}
   </ul>
 </body>
 </html>
