@@ -1,12 +1,12 @@
 {
   "name": "rss",
-  "version": "1.0.0",
+  "type": "module",
   "packageManager": "pnpm@10.26.0",
-  "description": "",
-  "author": "",
-  "license": "ISC",
-  "keywords": [],
   "main": "index.js",
+  "engines": {
+    "node": "24.x",
+    "pnpm": ">=8"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
