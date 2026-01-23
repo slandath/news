@@ -8,11 +8,11 @@
 <body>
     <h1>News Feeds</h1>
       <ul>
-    {% for feed in feeds %}
+    {{#each feeds}}
       <li>
-        <a href="/feed?url={{ feed.url | urlencode }}">{{ feed.title }}</a>
+        <a href="/feed?url={{encodedURL}}">{{ this.title }}</a>
       </li>
-    {% endfor %}
+    {{/each}}
   </ul>
 </body>
 </html>
