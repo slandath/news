@@ -2,7 +2,7 @@
   "name": "rss",
   "type": "module",
   "packageManager": "pnpm@10.26.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "engines": {
     "node": "24.x",
     "pnpm": ">=8"
