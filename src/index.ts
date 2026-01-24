@@ -64,6 +64,11 @@ app.get('/feed', async (c) => {
     const feed = await parser.parseURL(
       feedURL,
     )
+    const feedSource = new URL(feedURL).hostname.replace('www.', '')
+
+    feed.items.forEach((item) => {
+      item.isHackerNews = feedSource === 'news.ycombinator.com'
+    })
     const html = feedTemplate({ feed, feeds })
     return c.html(html)
   }

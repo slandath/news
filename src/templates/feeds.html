@@ -12,7 +12,11 @@
       <ul>
     {{#each feed.items}}
       <li>
+        {{#if this.isHackerNews}}
+        <a href="{{this.link}}" target="_blank">{{ this.title }}</a>
+        {{else}}
         <a href="/article?url={{this.link}}">{{ this.title }}</a>
+        {{/if}}
         <p>{{ this.pubDate }}</p>
       </li>
     {{/each}}
