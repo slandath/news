@@ -18,15 +18,11 @@
       </header>
 
       <h1>{{ feed.title }}</h1>
-      <section>
+      <section id="content">
         <ul>
           {{#each feed.items}}
           <li>
-            {{#if this.isHackerNews}}
-            <a href="{{this.link}}" target="_blank">{{ this.title }}</a>
-            {{else}}
-            <a href="/article?url={{this.link}}">{{ this.title }}</a>
-            {{/if}}
+            <a href="/article?url={{encodeURI this.link}}">{{ this.title }}</a>
             <p>{{ this.pubDate }}</p>
           </li>
           {{/each}}
