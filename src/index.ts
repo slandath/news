@@ -47,6 +47,14 @@ const siteConfigs: Record<string, SiteConfig> = {
       .join(''),
     title: 'h1.ArticleHeader-headline',
   },
+  'clickondetroit.com': {
+    article: 'p.article-text',
+    articleWrapper: ($: CheerioAPI) => $('p.article-text')
+      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
+      .get()
+      .join(''),
+    title: 'h1.headline',
+  },
 }
 
 app.get('/', (c) => {
