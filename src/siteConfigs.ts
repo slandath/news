@@ -10,7 +10,7 @@ export const siteConfigs: Record<string, SiteConfig> = {
   'nbcnews.com': {
     article: 'p.body-graf',
     articleWrapper: ($: CheerioAPI) => $('p.body-graf')
-      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
+      .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
       .get()
       .join(''),
     title: 'h1.article-hero-headline__htag',
@@ -18,7 +18,7 @@ export const siteConfigs: Record<string, SiteConfig> = {
   'cnbc.com': {
     article: 'div.group p',
     articleWrapper: ($: CheerioAPI) => $('div.group p')
-      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
+      .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
       .get()
       .join(''),
     title: 'h1.ArticleHeader-headline',
@@ -26,7 +26,7 @@ export const siteConfigs: Record<string, SiteConfig> = {
   'clickondetroit.com': {
     article: 'p.article-text',
     articleWrapper: ($: CheerioAPI) => $('p.article-text')
-      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
+      .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
       .get()
       .join(''),
     title: 'h1.headline',

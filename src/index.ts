@@ -21,7 +21,7 @@ const __dirname = dirname(__filename)
 const templateDir = join(__dirname, 'templates')
 
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
-const getDomain = (url: string) => new URL(url).hostname.replace('www.', '')
+const getDomain = (url: URL): string => url.hostname.replace('www.', '')
 
 // Load and compile Handlebars templates
 const homeTemplate = Handlebars.compile(
@@ -67,31 +67,43 @@ app.get('/feed', async (c) => {
 
 // GET /article - Fetch article content and extract body/title using Cheerio
 app.get('/article', async (c) => {
-  const url = c.req.query('url')
-  if (!url) {
+  const urlParam = c.req.query('url')
+  if (!urlParam) {
     return c.text('No URL found', 400)
   }
+  let parsedUrl: URL
   try {
-    const domain = getDomain(url)
+    parsedUrl = new URL(urlParam)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return c.text('Invalid URL protocol', 400)
+    }
+  }
+  catch (error) {
+    console.error(error)
+    return c.text('Invalid URL', 400)
+  }
+
+  let timeout: NodeJS.Timeout | undefined
+  try {
+    const domain = getDomain(parsedUrl)
     const config = siteConfigs[domain]
 
     // If no config exists for this domain, redirect to source URL
     if (!config) {
-      return c.redirect(url)
+      return c.redirect(parsedUrl.toString())
     }
 
     // Fetch article with 5-second timeout
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-    const response = await fetch(url, { signal: controller.signal })
-    clearTimeout(timeout)
+    timeout = setTimeout(() => controller.abort(), 5000)
+    const response = await fetch(parsedUrl.toString(), { signal: controller.signal })
     const html = await response.text()
     const $ = cheerio.load(html)
 
     // Extract article content and title using site-specific selectors
     const article = config.articleWrapper($ as CheerioAPI)
     const title = $(config.title).text()
-    const rendered = articleTemplate({ title, article, url })
+    const rendered = articleTemplate({ title, article, url: parsedUrl.toString() })
     return c.html(rendered)
   }
   catch (error) {
@@ -103,7 +115,10 @@ app.get('/article', async (c) => {
     }
 
     // Fallback: redirect to source URL on any other error
-    return c.redirect(url)
+    return c.redirect(parsedUrl.toString())
+  }
+  finally {
+    clearTimeout(timeout)
   }
 })
 
