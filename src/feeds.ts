@@ -8,4 +8,5 @@ export const feeds: Feed[] = [
   { title: 'Hacker News', url: 'https://news.ycombinator.com/rss' },
   { title: 'NBC News', url: 'https://feeds.nbcnews.com/nbcnews/public/news' },
   { title: 'ClickOnDetroit', url: 'https://www.clickondetroit.com/arc/outboundfeeds/rss/category/news/?outputType=xml' },
+  { title: 'AP News', url: 'https://news.google.com/rss/search?q=site%3Aapnews.com&hl=en-US&gl=US&ceid=US%3Aen' },
 ].sort((a, b) => a.title.localeCompare(b.title))

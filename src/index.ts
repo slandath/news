@@ -21,6 +21,8 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const templateDir = join(__dirname, 'templates')
 
+const getDomain = (url: string) => new URL(url).hostname.replace('www.', '')
+
 const homeTemplate = Handlebars.compile(
   fs.readFileSync(join(templateDir, 'home.html'), 'utf-8'),
 )
@@ -33,10 +35,17 @@ const articleTemplate = Handlebars.compile(
   fs.readFileSync(join(templateDir, 'article.html'), 'utf-8'),
 )
 
+Handlebars.registerHelper('encodeURI', (str) => {
+  return encodeURIComponent(str)
+})
+
 const siteConfigs: Record<string, SiteConfig> = {
   'nbcnews.com': {
     article: 'p.body-graf',
-    articleWrapper: ($: CheerioAPI) => $('p.body-graf').map((i, el) => `<p>${$(el).html()}</p>`).get().join(''),
+    articleWrapper: ($: CheerioAPI) => $('p.body-graf')
+      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
+      .get()
+      .join(''),
     title: 'h1.article-hero-headline__htag',
   },
   'cnbc.com': {
@@ -72,11 +81,6 @@ app.get('/feed', async (c) => {
     const feed = await parser.parseURL(
       feedURL,
     )
-    const feedSource = new URL(feedURL).hostname.replace('www.', '')
-
-    feed.items.forEach((item) => {
-      item.isHackerNews = feedSource === 'news.ycombinator.com'
-    })
     const html = feedTemplate({ feed, feeds })
     return c.html(html)
   }
@@ -89,18 +93,20 @@ app.get('/feed', async (c) => {
 app.get('/article', async (c) => {
   const url = c.req.query('url')
   if (!url) {
-    return c.text('URL required', 400)
+    return c.text('No URL found', 400)
   }
   try {
-    const urlObj = new URL(url)
-    const domain = urlObj.hostname.replace('www.', '')
+    const domain = getDomain(url)
     const config = siteConfigs[domain]
 
     if (!config) {
-      return c.text('Site not configured', 400)
+      return c.redirect(url)
     }
 
-    const response = await fetch(url)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const response = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeout)
     const html = await response.text()
     const $ = cheerio.load(html)
 
@@ -111,7 +117,12 @@ app.get('/article', async (c) => {
   }
   catch (error) {
     console.error(error)
-    return c.text('Error fetching article')
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      return c.html('<p>Request Timeout</p>')
+    }
+
+    return c.redirect(url)
   }
 })
 
