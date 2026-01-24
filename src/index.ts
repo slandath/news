@@ -8,12 +8,7 @@ import Handlebars from 'handlebars'
 import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
-
-interface SiteConfig {
-  article: string
-  articleWrapper: ($: CheerioAPI) => string
-  title: string
-}
+import { siteConfigs } from './siteConfigs.js'
 
 const app = new Hono()
 const parser = new Parser()
@@ -38,33 +33,6 @@ const articleTemplate = Handlebars.compile(
 Handlebars.registerHelper('encodeURI', (str) => {
   return encodeURIComponent(str)
 })
-
-const siteConfigs: Record<string, SiteConfig> = {
-  'nbcnews.com': {
-    article: 'p.body-graf',
-    articleWrapper: ($: CheerioAPI) => $('p.body-graf')
-      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
-      .get()
-      .join(''),
-    title: 'h1.article-hero-headline__htag',
-  },
-  'cnbc.com': {
-    article: 'div.group p',
-    articleWrapper: ($: CheerioAPI) => $('div.group p')
-      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
-      .get()
-      .join(''),
-    title: 'h1.ArticleHeader-headline',
-  },
-  'clickondetroit.com': {
-    article: 'p.article-text',
-    articleWrapper: ($: CheerioAPI) => $('p.article-text')
-      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
-      .get()
-      .join(''),
-    title: 'h1.headline',
-  },
-}
 
 app.get('/', (c) => {
   const feedsWithEncoded = feeds.map(f => ({
