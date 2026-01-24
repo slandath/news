@@ -1,3 +1,4 @@
+import type { CheerioAPI } from 'cheerio'
 import fs from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,6 +7,13 @@ import Handlebars from 'handlebars'
 import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
+import * as cheerio from 'cheerio'
+
+type SiteConfig = {
+  article: string
+  articleWrapper: ($: CheerioAPI) => string
+  title: string
+}
 
 const app = new Hono()
 const parser = new Parser()
@@ -20,6 +28,17 @@ const homeTemplate = Handlebars.compile(
 const feedTemplate = Handlebars.compile(
   fs.readFileSync(join(templateDir, 'feeds.html'), 'utf-8'),
 )
+
+const articleTemplate = Handlebars.compile(
+  fs.readFileSync(join(templateDir, 'article.html'), 'utf-8')
+)
+
+const siteConfigs: Record<string, SiteConfig> = {
+  'nbcnews.com': {
+    article: 'p.body-graf',
+    articleWrapper: ($: CheerioAPI) => $('p.body-graf').map((i, el) => `<p>${$(el).html()}</p>`).get().join(''),
+    title: 'h1.article-hero-headline__htag',
+  }}
 
 app.get('/', (c) => {
   const feedsWithEncoded = feeds.map(f => ({
@@ -42,6 +61,35 @@ app.get('/feed', async (c) => {
   catch (error) {
     console.error(error)
     return c.text('Error fetching feed')
+  }
+})
+
+app.get('/article', async (c) => {
+  const url = c.req.query('url')
+  if (!url) {
+    return c.text('URL required', 400)
+  }
+  try {
+    const urlObj = new URL(url)
+    const domain = urlObj.hostname.replace('www.', '')
+    const config = siteConfigs[domain]
+
+    if (!config) {
+      return c.text('Site not configured', 400)
+    }
+
+    const response = await fetch(url)
+    const html = await response.text()
+    const $ = cheerio.load(html)
+
+    const article = config.articleWrapper($ as CheerioAPI)
+    const title = $(config.title).text()
+    const rendered = articleTemplate({ title, article, url})
+    return c.html(rendered)
+  }
+  catch (error) {
+    console.error(error)
+    return c.text('Error fetching article')
   }
 })
 
