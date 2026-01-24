@@ -1,26 +1,37 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>{{ feed.title }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-</head>
-<body>
-  <main class="container">
-        <h1>{{ feed.title }}</h1>
-      <ul>
-    {{#each feed.items}}
-      <li>
-        {{#if this.isHackerNews}}
-        <a href="{{this.link}}" target="_blank">{{ this.title }}</a>
-        {{else}}
-        <a href="/article?url={{this.link}}">{{ this.title }}</a>
-        {{/if}}
-        <p>{{ this.pubDate }}</p>
-      </li>
-    {{/each}}
-  </ul>
-  </main>
-</body>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <nav aria-label="breadcrumb">
+          <ul>
+            <li><a href="/">Home</a></li>
+          </ul>
+        </nav>
+      </header>
+
+      <h1>{{ feed.title }}</h1>
+      <section>
+        <ul>
+          {{#each feed.items}}
+          <li>
+            {{#if this.isHackerNews}}
+            <a href="{{this.link}}" target="_blank">{{ this.title }}</a>
+            {{else}}
+            <a href="/article?url={{this.link}}">{{ this.title }}</a>
+            {{/if}}
+            <p>{{ this.pubDate }}</p>
+          </li>
+          {{/each}}
+        </ul>
+      </section>
+    </main>
+  </body>
 </html>
