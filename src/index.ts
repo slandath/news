@@ -3,13 +3,13 @@ import fs from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
+import * as cheerio from 'cheerio'
 import Handlebars from 'handlebars'
 import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
-import * as cheerio from 'cheerio'
 
-type SiteConfig = {
+interface SiteConfig {
   article: string
   articleWrapper: ($: CheerioAPI) => string
   title: string
@@ -30,7 +30,7 @@ const feedTemplate = Handlebars.compile(
 )
 
 const articleTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'article.html'), 'utf-8')
+  fs.readFileSync(join(templateDir, 'article.html'), 'utf-8'),
 )
 
 const siteConfigs: Record<string, SiteConfig> = {
@@ -38,7 +38,16 @@ const siteConfigs: Record<string, SiteConfig> = {
     article: 'p.body-graf',
     articleWrapper: ($: CheerioAPI) => $('p.body-graf').map((i, el) => `<p>${$(el).html()}</p>`).get().join(''),
     title: 'h1.article-hero-headline__htag',
-  }}
+  },
+  'cnbc.com': {
+    article: 'div.group p',
+    articleWrapper: ($: CheerioAPI) => $('div.group p')
+      .map((i: number, el: any) => `<p>${$(el).html()}</p>`)
+      .get()
+      .join(''),
+    title: 'h1.ArticleHeader-headline',
+  },
+}
 
 app.get('/', (c) => {
   const feedsWithEncoded = feeds.map(f => ({
@@ -84,7 +93,7 @@ app.get('/article', async (c) => {
 
     const article = config.articleWrapper($ as CheerioAPI)
     const title = $(config.title).text()
-    const rendered = articleTemplate({ title, article, url})
+    const rendered = articleTemplate({ title, article, url })
     return c.html(rendered)
   }
   catch (error) {
