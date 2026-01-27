@@ -31,4 +31,20 @@ export const siteConfigs: Record<string, SiteConfig> = {
       .join(''),
     title: 'h1.headline',
   },
+  'slashfilm.com': {
+    article: 'div.columns-holder p',
+      articleWrapper: ($: CheerioAPI) => $('div.columns-holder p')
+    .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
+    .get()
+    .join(''),
+  title: 'h1.title-gallery',
+  },
+  'pcgamer.com': {
+  article: 'div#article-body p',
+  articleWrapper: ($: CheerioAPI) => $('div#article-body p')
+    .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
+    .get()
+    .join(''),
+  title: 'h1',
+},
 }
