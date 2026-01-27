@@ -7,13 +7,13 @@ export interface SiteConfig {
 }
 
 export const siteConfigs: Record<string, SiteConfig> = {
-  'nbcnews.com': {
-    article: 'p.body-graf',
-    articleWrapper: ($: CheerioAPI) => $('p.body-graf')
+  'clickondetroit.com': {
+    article: 'p.article-text',
+    articleWrapper: ($: CheerioAPI) => $('p.article-text')
       .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
       .get()
       .join(''),
-    title: 'h1.article-hero-headline__htag',
+    title: 'h1.headline',
   },
   'cnbc.com': {
     article: 'div.group p',
@@ -23,12 +23,29 @@ export const siteConfigs: Record<string, SiteConfig> = {
       .join(''),
     title: 'h1.ArticleHeader-headline',
   },
-  'clickondetroit.com': {
-    article: 'p.article-text',
-    articleWrapper: ($: CheerioAPI) => $('p.article-text')
+  'nbcnews.com': {
+    article: 'p.body-graf',
+    articleWrapper: ($: CheerioAPI) => $('p.body-graf')
       .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
       .get()
       .join(''),
-    title: 'h1.headline',
+    title: 'h1.article-hero-headline__htag',
   },
+  'pcgamer.com': {
+    article: 'div#article-body p',
+    articleWrapper: ($: CheerioAPI) => $('div#article-body p')
+      .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
+      .get()
+      .join(''),
+    title: 'h1',
+  },
+  'slashfilm.com': {
+    article: 'div.columns-holder p',
+    articleWrapper: ($: CheerioAPI) => $('div.columns-holder p')
+      .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
+      .get()
+      .join(''),
+    title: 'h1.title-gallery',
+  },
+
 }
