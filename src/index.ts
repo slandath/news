@@ -53,7 +53,10 @@ app.get('/', (c) => {
 
 // GET /feed - Fetch and display RSS feed items
 app.get('/feed', async (c) => {
-  const feedURL = c.req.query('url') || feeds[0].url
+  const feedURL = c.req.query('url') || feeds[0]?.url
+  if (!feedURL) {
+    return c.text('URL undefined')
+  }
   try {
     const feed = await parser.parseURL(feedURL)
     const html = feedTemplate({ feed, feeds })
