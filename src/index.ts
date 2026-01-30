@@ -1,48 +1,25 @@
 // Import types and libraries
 import type { CheerioAPI } from 'cheerio'
-import fs from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import type { Context } from 'hono'
 import { serve } from '@hono/node-server'
 import * as cheerio from 'cheerio'
-import Handlebars from 'handlebars'
 import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
 import { siteConfigs } from './siteConfigs.js'
+import { articleTemplate } from './templates/article.js'
+import { feedTemplate } from './templates/feeds.js'
+import { homeTemplate } from './templates/home.js'
 
 // Initialize Hono app and RSS parser
 const app = new Hono()
 const parser = new Parser()
 
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-const templateDir = join(__dirname, 'templates')
-
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
 
-// Load and compile Handlebars templates
-const homeTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'home.html'), 'utf-8'),
-)
-
-const feedTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'feeds.html'), 'utf-8'),
-)
-
-const articleTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'article.html'), 'utf-8'),
-)
-
-// Register Handlebars helper for URL encoding
-Handlebars.registerHelper('encodeURI', (str) => {
-  return encodeURIComponent(str)
-})
-
 // GET / - Display home page with list of available feeds
-app.get('/', (c) => {
+app.get('/', (c: Context) => {
   const feedsWithEncoded = feeds.map(f => ({
     ...f,
     encodedURL: encodeURIComponent(f.url),
@@ -52,14 +29,18 @@ app.get('/', (c) => {
 })
 
 // GET /feed - Fetch and display RSS feed items
-app.get('/feed', async (c) => {
+app.get('/feed', async (c: Context) => {
   const feedURL = c.req.query('url') || feeds[0]?.url
   if (!feedURL) {
     return c.text('URL undefined')
   }
   try {
     const feed = await parser.parseURL(feedURL)
-    const html = feedTemplate({ feed, feeds })
+    const feedsWithEncoded = feeds.map(f => ({
+      ...f,
+      encodedURL: encodeURIComponent(f.url),
+    }))
+    const html = feedTemplate({ feed, feeds: feedsWithEncoded })
     return c.html(html)
   }
   catch (error) {
@@ -69,7 +50,7 @@ app.get('/feed', async (c) => {
 })
 
 // GET /article - Fetch article content and extract body/title using Cheerio
-app.get('/article', async (c) => {
+app.get('/article', async (c: Context) => {
   const urlParam = c.req.query('url')
   if (!urlParam) {
     return c.text('No URL found', 400)

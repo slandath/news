@@ -1,10 +1,18 @@
-<!doctype html>
+interface ArticleTemplateProps {
+  title?: string
+  article?: string
+  url?: string
+}
+
+export function articleTemplate({ title, article, url }: ArticleTemplateProps) {
+  return `
+  <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>{{ feed.title }}</title>
+    <title>${title}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
   <body>
@@ -13,21 +21,17 @@
         <nav aria-label="breadcrumb">
           <ul>
             <li><a href="/">Home</a></li>
+            <li><a href="/feed">Feed</a></li>
           </ul>
         </nav>
       </header>
-
-      <h1>{{ feed.title }}</h1>
-      <section id="content">
-        <ul>
-          {{#each feed.items}}
-          <li>
-            <a href="/article?url={{encodeURI this.link}}">{{ this.title }}</a>
-            <p>{{ this.pubDate }}</p>
-          </li>
-          {{/each}}
-        </ul>
+      <h1>${title}</h1>
+      <section>
+      ${article}
+        <a href="${url}" target="_blank">Source</a>
       </section>
     </main>
   </body>
 </html>
+  `
+}
