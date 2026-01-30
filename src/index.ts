@@ -1,5 +1,6 @@
 // Import types and libraries
 import type { CheerioAPI } from 'cheerio'
+import type { Context } from 'hono'
 import { serve } from '@hono/node-server'
 import * as cheerio from 'cheerio'
 import { Hono } from 'hono'
@@ -18,7 +19,7 @@ const parser = new Parser()
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
 
 // GET / - Display home page with list of available feeds
-app.get('/', (c) => {
+app.get('/', (c: Context) => {
   const feedsWithEncoded = feeds.map(f => ({
     ...f,
     encodedURL: encodeURIComponent(f.url),
@@ -28,7 +29,7 @@ app.get('/', (c) => {
 })
 
 // GET /feed - Fetch and display RSS feed items
-app.get('/feed', async (c) => {
+app.get('/feed', async (c: Context) => {
   const feedURL = c.req.query('url') || feeds[0]?.url
   if (!feedURL) {
     return c.text('URL undefined')
@@ -49,7 +50,7 @@ app.get('/feed', async (c) => {
 })
 
 // GET /article - Fetch article content and extract body/title using Cheerio
-app.get('/article', async (c) => {
+app.get('/article', async (c: Context) => {
   const urlParam = c.req.query('url')
   if (!urlParam) {
     return c.text('No URL found', 400)
