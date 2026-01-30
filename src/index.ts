@@ -1,15 +1,12 @@
 // Import types and libraries
 import type { CheerioAPI } from 'cheerio'
-import fs from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import * as cheerio from 'cheerio'
-import Handlebars from 'handlebars'
 import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
 import { siteConfigs } from './siteConfigs.js'
+import { articleTemplate } from './templates/article.js'
 import { feedTemplate } from './templates/feeds.js'
 import { homeTemplate } from './templates/home.js'
 
@@ -17,22 +14,8 @@ import { homeTemplate } from './templates/home.js'
 const app = new Hono()
 const parser = new Parser()
 
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-const templateDir = join(__dirname, 'templates')
-
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
-
-const articleTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'article.html'), 'utf-8'),
-)
-
-// Register Handlebars helper for URL encoding
-Handlebars.registerHelper('encodeURI', (str) => {
-  return encodeURIComponent(str)
-})
 
 // GET / - Display home page with list of available feeds
 app.get('/', (c) => {
