@@ -10,6 +10,7 @@ import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
 import { siteConfigs } from './siteConfigs.js'
+import { homeTemplate } from './templates/home.js'
 
 // Initialize Hono app and RSS parser
 const app = new Hono()
@@ -22,11 +23,6 @@ const templateDir = join(__dirname, 'templates')
 
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
-
-// Load and compile Handlebars templates
-const homeTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'home.html'), 'utf-8'),
-)
 
 const feedTemplate = Handlebars.compile(
   fs.readFileSync(join(templateDir, 'feeds.html'), 'utf-8'),

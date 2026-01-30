@@ -1,3 +1,11 @@
+interface Feed {
+  title: string
+  url: string
+  encodedURL: string
+}
+
+export function homeTemplate({ feeds }: { feeds: Feed[] }) {
+  return `
 <!doctype html>
 <html lang="en">
   <head>
@@ -18,12 +26,16 @@
       </header>
       <h1 class="h1">News Feeds</h1>
       <ul>
-        {{#each feeds}}
-        <li>
-          <a href="/feed?url={{encodedURL}}">{{ this.title }}</a>
-        </li>
-        {{/each}}
+      ${feeds.map(feed => `
+      <li>
+        <a href="/feed?url=${feed.encodedURL}">
+        ${feed.title}
+        </a>
+      </li>
+        `).join('')}
       </ul>
     </main>
   </body>
 </html>
+`
+}
