@@ -55,12 +55,6 @@ export function feedTemplate({ feed }: FeedTemplateProps) {
               </li>
         `).join('')}
       </ul>
-        <ul>
-          <li>
-            <a href="/article?url={{encodeURI this.link}}">{{ this.title }}</a>
-            <p>{{ this.pubDate }}</p>
-          </li>
-        </ul>
       </section>
     </main>
   </body>
