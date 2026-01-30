@@ -10,6 +10,7 @@ import { Hono } from 'hono'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
 import { siteConfigs } from './siteConfigs.js'
+import { feedTemplate } from './templates/feeds.js'
 import { homeTemplate } from './templates/home.js'
 
 // Initialize Hono app and RSS parser
@@ -23,10 +24,6 @@ const templateDir = join(__dirname, 'templates')
 
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
-
-const feedTemplate = Handlebars.compile(
-  fs.readFileSync(join(templateDir, 'feeds.html'), 'utf-8'),
-)
 
 const articleTemplate = Handlebars.compile(
   fs.readFileSync(join(templateDir, 'article.html'), 'utf-8'),
@@ -55,7 +52,11 @@ app.get('/feed', async (c) => {
   }
   try {
     const feed = await parser.parseURL(feedURL)
-    const html = feedTemplate({ feed, feeds })
+    const feedsWithEncoded = feeds.map(f => ({
+      ...f,
+      encodedURL: encodeURIComponent(f.url),
+    }))
+    const html = feedTemplate({ feed, feeds: feedsWithEncoded })
     return c.html(html)
   }
   catch (error) {
