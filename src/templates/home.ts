@@ -1,8 +1,4 @@
-interface Feed {
-  title: string
-  url: string
-  encodedURL: string
-}
+import type { Feed } from '../types.js'
 
 export function homeTemplate({ feeds }: { feeds: Feed[] }) {
   return `
