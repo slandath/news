@@ -1,23 +1,4 @@
-interface ParserFeed {
-  title?: string
-  items: Array<{
-    title?: string
-    link?: string
-    pubDate?: string
-    content?: string
-  }>
-}
-
-interface Feed {
-  title: string
-  url: string
-  encodedURL: string
-}
-
-interface FeedTemplateProps {
-  feed: ParserFeed
-  feeds: Feed[]
-}
+import type { FeedTemplateProps } from '../types.js'
 
 export function feedTemplate({ feed }: FeedTemplateProps) {
   return `

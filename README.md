@@ -14,7 +14,6 @@ A lightweight web server that fetches RSS feeds, converts XML to JSON, and displ
 [![@antfu/eslint-config](https://img.shields.io/badge/%40antfu%2Feslint--config-7.2.0-4b3a8a?style=for-the-badge)](https://github.com/antfu/eslint-config)
 [![Cheerio](https://img.shields.io/badge/Cheerio-1.2-CD853F?style=for-the-badge&logo=cheerio&logoColor=white)](https://github.com/cheeriojs/cheerio)
 [![ESLint](https://img.shields.io/badge/ESLint-9.39.2-4b3a8a?style=for-the-badge&logo=eslint&logoColor=white)](https://github.com/eslint/eslint)
-![Handlebars](https://img.shields.io/badge/Handlebars-4.7.8-%23000000?style=for-the-badge&logo=Handlebars.js&logoColor=white)
 [![Hono](https://img.shields.io/badge/Hono-4.11.5-%23E36002?style=for-the-badge&logo=hono&logoColor=white)](https://github.com/honojs/hono)
 [![Pico CSS](https://img.shields.io/badge/Pico-2.1.1-yellow?style=for-the-badge&logo=css&logoColor=white)](https://github.com/picocss/pico)
 [![rss-parser](https://img.shields.io/badge/rss--parser-3.13.0-black?style=for-the-badge&logo=rss&logoColor=white)](https://github.com/rbren/rss-parser)

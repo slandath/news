@@ -1,8 +1,4 @@
-interface ArticleTemplateProps {
-  title?: string
-  article?: string
-  url?: string
-}
+import type { ArticleTemplateProps } from '../types.js'
 
 export function articleTemplate({ title, article, url }: ArticleTemplateProps) {
   return `

@@ -1,10 +1,5 @@
 import type { CheerioAPI } from 'cheerio'
-
-export interface SiteConfig {
-  article: string
-  articleWrapper: ($: CheerioAPI) => string
-  title: string
-}
+import type { SiteConfig } from './types.js'
 
 export const siteConfigs: Record<string, SiteConfig> = {
   'clickondetroit.com': {
