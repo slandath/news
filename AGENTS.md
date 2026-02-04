@@ -25,13 +25,13 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 - Separate type imports from value imports using `import type`
 - **Example:**
   ```typescript
-  import type { CheerioAPI } from "cheerio";
-  import { Hono } from "hono";
+  import type { CheerioAPI } from 'cheerio'
+  import { Hono } from 'hono'
   ```
 - Import extensions: Always include `.js` extensions in import paths for ES modules
   ```typescript
-  import { feeds } from "./feeds.js";
-  import { siteConfigs } from "./siteConfigs.js";
+  import { feeds } from './feeds.js'
+  import { siteConfigs } from './siteConfigs.js'
   ```
 
 ### Formatting & Style
@@ -74,12 +74,13 @@ This file provides instructions for AI coding assistants working on the RSS Feed
   ```typescript
   try {
     // operation
-  } catch (error) {
-    console.error(error);
-    if (error instanceof Error && error.name === "AbortError") {
-      return c.html("<p>Request Timeout</p>");
+  }
+  catch (error) {
+    console.error(error)
+    if (error instanceof Error && error.name === 'AbortError') {
+      return c.html('<p>Request Timeout</p>')
     }
-    return c.redirect(url);
+    return c.redirect(url)
   }
   ```
 
@@ -93,13 +94,13 @@ This file provides instructions for AI coding assistants working on the RSS Feed
   ```typescript
   // types.ts
   export interface HomeTemplateProps {
-    feeds: Feed[];
+    feeds: Feed[]
   }
 
   // templates/home.ts
-  export const homeTemplate = (props: HomeTemplateProps): string => {
-    return `<html>...</html>`;
-  };
+  export function homeTemplate(props: HomeTemplateProps): string {
+    return `<html>...</html>`
+  }
   ```
 
 ### Cheerio DOM Parsing
@@ -110,11 +111,12 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 - Always use `.map()` to transform elements into wrapped HTML strings
 - **Example:**
   ```typescript
-  const articleWrapper = ($: CheerioAPI) =>
-    $("p.body-text")
+  function articleWrapper($: CheerioAPI) {
+    return $('p.body-text')
       .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
       .get()
-      .join("");
+      .join('')
+  }
   ```
 
 ### Hono Routes
