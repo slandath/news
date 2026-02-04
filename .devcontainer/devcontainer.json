@@ -7,15 +7,20 @@
 
   // Features to add to the dev container. More info: https://containers.dev/features.
   // "features": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [4000],
-  "mounts": [
-    "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,readonly"
-  ],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "set -a && . .devcontainer/.env && set +a && echo \"DEBUG - Email: $USER_EMAIL, Name: $GITHUB_USER\" && git config user.email \"$USER_EMAIL\" && git config user.name \"$GITHUB_USER\" && git config gpg.format ssh && git config user.signingkey $PUB_KEY_LOCATION && git config gpg.ssh.allowedSignersFile $SIGNER_FILE_LOCATION && git config commit.gpgsign true && pnpm install"
+  "postCreateCommand": "set -e && pnpm install && pnpm build"
 
   // Configure tool-specific properties.
   // "customizations": {},
