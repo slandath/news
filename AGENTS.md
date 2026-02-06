@@ -99,18 +99,20 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 
   ```typescript
   // types.ts
+  // templates/article.ts
+  import type { HtmlEscapedString } from 'hono/utils/html'
+
   export interface ArticleTemplateProps {
     title: string
     article: string[]
     url: string
   }
 
-  // templates/article.ts
   export function articleTemplate({
     title,
     article,
     url,
-  }: ArticleTemplateProps): string {
+  }: ArticleTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
     return html`
       <h1>${title}</h1>
       ${article.map((para: string) => html`<p>${para}</p>`)}
