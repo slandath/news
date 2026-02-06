@@ -11,6 +11,11 @@ export interface BaseFeed {
   url: string
 }
 
+export interface ErrorTemplateProps {
+  title: string
+  message: string
+}
+
 export interface ParserFeed {
   title?: string
   items: Array<{

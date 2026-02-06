@@ -1,0 +1,31 @@
+import type { ErrorTemplateProps } from '../types.js'
+
+export function errorTemplate({ title, message }: ErrorTemplateProps) {
+  return `
+  <!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Error</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <nav aria-label="breadcrumb">
+          <ul>
+            <li><a href="/">Home</a></li>
+          </ul>
+        </nav>
+      </header>
+      <section>
+        <h1>${title}</h1>
+        <p>${message}</p>
+    </section>
+    </main>
+  </body>
+</html>
+  `
+}

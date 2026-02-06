@@ -5,10 +5,12 @@ import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import * as cheerio from 'cheerio'
 import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
 import Parser from 'rss-parser'
 import { feeds } from './feeds.js'
 import { siteConfigs } from './siteConfigs.js'
 import { articleTemplate } from './templates/article.js'
+import { errorTemplate } from './templates/error.js'
 import { feedTemplate } from './templates/feeds.js'
 import { homeTemplate } from './templates/home.js'
 
@@ -49,7 +51,7 @@ app.get('/feed', async (c: Context) => {
   }
   catch (error) {
     console.error(error)
-    return c.text('Error fetching feed')
+    throw new HTTPException(502, { message: 'Bad Feed' })
   }
 })
 
@@ -108,6 +110,14 @@ app.get('/article', async (c: Context) => {
   finally {
     clearTimeout(timeout)
   }
+})
+
+app.onError((error, c) => {
+  if (error instanceof HTTPException) {
+    console.error(error)
+    return c.html(errorTemplate({ title: 'Error', message: error.message }), error.status)
+  }
+  return c.text('Internal Server Error', 500)
 })
 
 // Start HTTP server on default port
