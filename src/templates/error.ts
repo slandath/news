@@ -1,7 +1,8 @@
+import type { HtmlEscapedString } from 'hono/utils/html'
 import type { ErrorTemplateProps } from '../types.js'
 import { html } from 'hono/html'
 
-export function errorTemplate({ title, message }: ErrorTemplateProps) {
+export function errorTemplate({ title, message }: ErrorTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   return html`
   <!doctype html>
 <html lang="en">
@@ -24,7 +25,7 @@ export function errorTemplate({ title, message }: ErrorTemplateProps) {
       <section>
         <h1>${title}</h1>
         <p>${message}</p>
-    </section>
+      </section>
     </main>
   </body>
 </html>

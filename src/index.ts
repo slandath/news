@@ -117,6 +117,7 @@ app.onError((error, c) => {
     console.error(error)
     return c.html(errorTemplate({ title: 'Error', message: error.message }), error.status)
   }
+  console.error(error)
   return c.text('Internal Server Error', 500)
 })
 
