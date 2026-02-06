@@ -1,5 +1,5 @@
 import type { ArticleTemplateProps } from '../types.js'
-import { html, raw } from 'hono/html'
+import { html } from 'hono/html'
 
 export function articleTemplate({ title, article, url }: ArticleTemplateProps) {
   return html`
@@ -24,7 +24,7 @@ export function articleTemplate({ title, article, url }: ArticleTemplateProps) {
       </header>
       <h1>${title}</h1>
       <section>
-      ${raw(article)}
+      ${article.map((para: string) => html`<p>${para}</p>`)}
         <a href="${url}" target="_blank">Source</a>
       </section>
     </main>
