@@ -1,7 +1,8 @@
 import type { Feed } from '../types.js'
+import { html } from 'hono/html'
 
 export function homeTemplate({ feeds }: { feeds: Feed[] }) {
-  return `
+  return html`
 <!doctype html>
 <html lang="en">
   <head>
@@ -22,13 +23,13 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
       </header>
       <h1 class="h1">News Feeds</h1>
       <ul>
-      ${feeds.map(feed => `
+      ${feeds.map(feed => html`
       <li>
         <a href="/feed?url=${feed.encodedURL}">
         ${feed.title}
         </a>
       </li>
-        `).join('')}
+        `)}
       </ul>
     </main>
   </body>

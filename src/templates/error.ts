@@ -1,7 +1,8 @@
 import type { ErrorTemplateProps } from '../types.js'
+import { html } from 'hono/html'
 
 export function errorTemplate({ title, message }: ErrorTemplateProps) {
-  return `
+  return html`
   <!doctype html>
 <html lang="en">
   <head>
