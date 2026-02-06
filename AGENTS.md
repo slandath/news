@@ -17,6 +17,11 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 - Currently no test suite is configured
 - To add tests in the future, update the `"test"` script in `package.json` (currently just exits with error)
 
+### Type Checking
+
+- Run `npx tsc --noEmit` to check for TypeScript errors without compiling
+- This is useful for quick validation during development
+
 ## Code Style Guidelines
 
 ### Imports
@@ -89,17 +94,28 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 - All template files export a function that takes a props object and returns HTML string
 - Props interfaces are defined in `src/types.ts`
 - Templates use curly braces for variable interpolation
+- For arrays of content (like article paragraphs), map over the array and use Hono's `html` tag
 - **Example:**
 
   ```typescript
   // types.ts
-  export interface HomeTemplateProps {
-    feeds: Feed[]
+  export interface ArticleTemplateProps {
+    title: string
+    article: string[]
+    url: string
   }
 
-  // templates/home.ts
-  export function homeTemplate(props: HomeTemplateProps): string {
-    return `<html>...</html>`
+  // templates/article.ts
+  export function articleTemplate({
+    title,
+    article,
+    url,
+  }: ArticleTemplateProps): string {
+    return html`
+      <h1>${title}</h1>
+      ${article.map((para: string) => html`<p>${para}</p>`)}
+      <a href="${url}">Source</a>
+    `
   }
   ```
 
@@ -108,15 +124,34 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 - Use Cheerio (`$`) for DOM manipulation and selection
 - Type Cheerio as `CheerioAPI` from the `cheerio` package
 - Site-specific CSS selectors are stored in `siteConfigs` with matching `title` and `article` selectors
-- Always use `.map()` to transform elements into wrapped HTML strings
+- **SECURITY:** Use `.text()` to extract plain text content only, stripping all HTML tags (including malicious scripts)
+- Return an array of text strings that templates can safely wrap in HTML
 - **Example:**
   ```typescript
   function articleWrapper($: CheerioAPI) {
     return $('p.body-text')
-      .map((i: number, el: any) => `<p>${$(el).text()}</p>`)
+      .map((_, el) => $(el).text())
       .get()
-      .join('')
   }
+  ```
+
+### Security (XSS Prevention)
+
+- **Never use `raw()`** from Hono's html module - it bypasses all escaping
+- Always use Hono's `html` tagged template literal which automatically escapes variables
+- Site configs extract text-only content using Cheerio's `.text()` method
+- Templates safely construct HTML by mapping over text arrays and wrapping in elements
+- **Example:**
+
+  ```typescript
+  // siteConfigs.ts - extract text only
+  articleWrapper: ($: CheerioAPI) =>
+    $('p.article-text')
+      .map((_, el) => $(el).text())
+      .get()
+
+  // article.ts - safely construct HTML
+  article.map((para: string) => html`<p>${para}</p>`)
   ```
 
 ### Hono Routes
@@ -147,7 +182,8 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 1. Fetches RSS feeds from configured URLs
 2. Parses RSS XML and displays feed items
 3. Extracts article content from linked URLs using site-specific CSS selectors
-4. Renders content using server-side Handlebars templates
+4. Sanitizes all third-party content to prevent XSS vulnerabilities
+5. Renders content using server-side templates with automatic HTML escaping
 
 The application runs on port 4000 and provides:
 

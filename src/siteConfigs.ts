@@ -1,6 +1,14 @@
 import type { CheerioAPI } from 'cheerio'
 import type { SiteConfig } from './types.js'
 
+/*
+SECURITY: Use .text() to extract plain text content only.
+This strips all HTML tags (including malicious scripts) from scraped articles,
+preventing XSS attacks when content is displayed in templates.
+The template then safely reconstructs HTML using Hono's html`` tag,
+which automatically escapes any remaining special characters.
+*/
+
 export const siteConfigs: Record<string, SiteConfig> = {
   'clickondetroit.com': {
     article: 'p.article-text',
