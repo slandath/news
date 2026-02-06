@@ -1,6 +1,7 @@
 // Import types and libraries
 import type { CheerioAPI } from 'cheerio'
 import type { Context } from 'hono'
+import process from 'node:process'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import * as cheerio from 'cheerio'
@@ -17,6 +18,9 @@ import { homeTemplate } from './templates/home.js'
 // Initialize Hono app and RSS parser
 const app = new Hono()
 const parser = new Parser()
+
+// Port
+const PORT = Number(process.env.PORT) || 4000
 
 // Favicon
 app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
@@ -122,4 +126,4 @@ app.onError((error, c) => {
 })
 
 // Start HTTP server on default port
-serve(app)
+serve({ fetch: app.fetch, port: PORT })

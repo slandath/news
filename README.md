@@ -28,6 +28,21 @@ pnpm dev
 
 Visit `http://localhost:4000` to browse RSS feeds.
 
+### Environment Variables
+
+Create a `.env` file in the project root (copy from `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+Available environment variables:
+
+- `PORT` - Server port (default: 4000)
+- `NODE_ENV` - Environment mode: `development` or `production`
+
+The app automatically uses the `PORT` environment variable for deployment platforms like Railway, Heroku, and Render.
+
 ## Usage
 
 - **Home page:** `http://localhost:4000` - View all available feeds
