@@ -1,7 +1,8 @@
 import type { FeedTemplateProps } from '../types.js'
+import { html } from 'hono/html'
 
 export function feedTemplate({ feed }: FeedTemplateProps) {
-  return `
+  return html`
 <!doctype html>
 <html lang="en">
   <head>
@@ -23,10 +24,10 @@ export function feedTemplate({ feed }: FeedTemplateProps) {
       <h1>${feed.title}</h1>
       <section id="content">
             <ul>
-      ${feed.items.map(article => `
+      ${feed.items.map(article => html`
       <li>
       ${article.link
-        ? `
+        ? html`
         <a href="/article?url=${encodeURIComponent(article.link)}">
         ${article.title}
         </a>
@@ -34,7 +35,7 @@ export function feedTemplate({ feed }: FeedTemplateProps) {
         : article.title}
         <p>${article.pubDate}</p>
               </li>
-        `).join('')}
+        `)}
       </ul>
       </section>
     </main>

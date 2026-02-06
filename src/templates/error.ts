@@ -1,15 +1,16 @@
-import type { Feed } from '../types.js'
+import type { HtmlEscapedString } from 'hono/utils/html'
+import type { ErrorTemplateProps } from '../types.js'
 import { html } from 'hono/html'
 
-export function homeTemplate({ feeds }: { feeds: Feed[] }) {
+export function errorTemplate({ title, message }: ErrorTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   return html`
-<!doctype html>
+  <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>Tom's News</title>
+    <title>Error</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
   <body>
@@ -17,22 +18,16 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
       <header>
         <nav aria-label="breadcrumb">
           <ul>
-            <li></li>
+            <li><a href="/">Home</a></li>
           </ul>
         </nav>
       </header>
-      <h1 class="h1">News Feeds</h1>
-      <ul>
-      ${feeds.map(feed => html`
-      <li>
-        <a href="/feed?url=${feed.encodedURL}">
-        ${feed.title}
-        </a>
-      </li>
-        `)}
-      </ul>
+      <section>
+        <h1>${title}</h1>
+        <p>${message}</p>
+      </section>
     </main>
   </body>
 </html>
-`
+  `
 }
