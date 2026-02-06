@@ -2,7 +2,7 @@ import type { CheerioAPI } from 'cheerio'
 
 export interface ArticleTemplateProps {
   title: string
-  article: string
+  article: string[]
   url: string
 }
 
@@ -37,6 +37,6 @@ export interface FeedTemplateProps {
 
 export interface SiteConfig {
   article: string
-  articleWrapper: ($: CheerioAPI) => string
+  articleWrapper: ($: CheerioAPI) => string[]
   title: string
 }
