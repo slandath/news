@@ -12,7 +12,7 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
     <title>Tom's News</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
-  <body>
+  <body class="container">
     <header role="banner">
       <nav aria-label="breadcrumb" role="navigation">
         <ul>
@@ -20,7 +20,7 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
         </ul>
       </nav>
     </header>
-    <main class="container" role="main">
+    <main role="main">
       <h1 class="h1">News Feeds</h1>
       <ul>
       ${feeds.map(feed => html`
