@@ -3,7 +3,7 @@ import type { CheerioAPI } from 'cheerio'
 import type { Context } from 'hono'
 import process from 'node:process'
 import { serve } from '@hono/node-server'
-import { serveStatic } from '@hono/node-server/serve-static'
+// import { serveStatic } from '@hono/node-server/serve-static'
 import * as cheerio from 'cheerio'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
@@ -23,7 +23,7 @@ const parser = new Parser()
 const PORT = Number(process.env.PORT) || 3000
 
 // Favicon
-app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
+// app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
 
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
