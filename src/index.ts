@@ -126,4 +126,4 @@ app.onError((error, c) => {
 })
 
 // Start HTTP server on default port
-serve({ fetch: app.fetch, port: PORT })
+serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' })
