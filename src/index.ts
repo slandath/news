@@ -90,14 +90,20 @@ app.get('/article', async (c: Context) => {
     // Fetch article with 5-second timeout
     const controller = new AbortController()
     timeout = setTimeout(() => controller.abort(), 5000)
-    const response = await fetch(parsedUrl.toString(), { signal: controller.signal })
+    const response = await fetch(parsedUrl.toString(), {
+      signal: controller.signal,
+    })
     const html = await response.text()
     const $ = cheerio.load(html)
 
     // Extract article content and title using site-specific selectors
     const article = config.articleWrapper($ as CheerioAPI)
     const title = $(config.title).text()
-    const rendered = articleTemplate({ title, article, url: parsedUrl.toString() })
+    const rendered = articleTemplate({
+      title,
+      article,
+      url: parsedUrl.toString(),
+    })
     return c.html(rendered)
   }
   catch (error) {
@@ -119,11 +125,16 @@ app.get('/article', async (c: Context) => {
 app.onError((error, c) => {
   if (error instanceof HTTPException) {
     console.error(error)
-    return c.html(errorTemplate({ title: 'Error', message: error.message }), error.status)
+    return c.html(
+      errorTemplate({ title: 'Error', message: error.message }),
+      error.status,
+    )
   }
   console.error(error)
   return c.text('Internal Server Error', 500)
 })
 
 // Start HTTP server on default port
-serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' })
+serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
+  console.warn(`Server listening on http://${info.address}:${info.port}`)
+})
