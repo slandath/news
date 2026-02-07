@@ -26,7 +26,7 @@ pnpm install
 pnpm dev
 ```
 
-Visit `http://localhost:4000` to browse RSS feeds.
+Visit `http://localhost:3000` to browse RSS feeds.
 
 ### Environment Variables
 
