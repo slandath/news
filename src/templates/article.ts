@@ -20,7 +20,7 @@ export function articleTemplate({
           href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
         />
       </head>
-      <body>
+      <body class="container">
         <header role="banner">
           <nav aria-label="breadcrumb" role="navigation">
             <ul>
@@ -28,7 +28,7 @@ export function articleTemplate({
             </ul>
           </nav>
         </header>
-      <main class="container" role="main">
+      <main role="main">
         <h1>${title}</h1>
           <section>
             ${article.map((para: string) => html`<p>${para}</p>`)}

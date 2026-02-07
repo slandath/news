@@ -12,7 +12,7 @@ export function feedTemplate({ feed }: FeedTemplateProps) {
     <title>${feed.title}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
-  <body>
+  <body class="container">
       <header role="banner">
         <nav aria-label="breadcrumb" role="navigation">
           <ul>
@@ -20,7 +20,7 @@ export function feedTemplate({ feed }: FeedTemplateProps) {
           </ul>
         </nav>
       </header>
-    <main class="container" role="main">
+    <main role="main">
       <h1>${feed.title}</h1>
       <section id="content">
             <ul>
