@@ -21,16 +21,15 @@ export function articleTemplate({
         />
       </head>
       <body>
-        <main class="container">
-          <header>
-            <nav aria-label="breadcrumb">
-              <ul>
-                <li><a href="/">Home</a></li>
-                <li><a href="/feed">Feed</a></li>
-              </ul>
-            </nav>
-          </header>
-          <h1>${title}</h1>
+        <header role="banner">
+          <nav aria-label="breadcrumb" role="navigation">
+            <ul>
+              <li><a href="/">Home</a></li>
+            </ul>
+          </nav>
+        </header>
+      <main class="container" role="main">
+        <h1>${title}</h1>
           <section>
             ${article.map((para: string) => html`<p>${para}</p>`)}
             <a href="${url}" target="_blank">Source</a>

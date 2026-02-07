@@ -14,19 +14,19 @@ export function errorTemplate({ title, message }: ErrorTemplateProps): HtmlEscap
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
   <body>
-    <main class="container">
-      <header>
-        <nav aria-label="breadcrumb">
-          <ul>
-            <li><a href="/">Home</a></li>
-          </ul>
-        </nav>
-      </header>
-      <section>
-        <h1>${title}</h1>
-        <p>${message}</p>
-      </section>
-    </main>
+    <header role="banner">
+      <nav aria-label="breadcrumb" role="navigation">
+        <ul>
+          <li><a href="/">Home</a></li>
+        </ul>
+      </nav>
+    </header>
+      <main class="container" role="main">
+        <section>
+          <h1>${title}</h1>
+          <p>${message}</p>
+        </section>
+      </main>
   </body>
 </html>
   `

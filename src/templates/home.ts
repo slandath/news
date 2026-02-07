@@ -13,14 +13,14 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
   <body>
-    <main class="container">
-      <header>
-        <nav aria-label="breadcrumb">
-          <ul>
-            <li></li>
-          </ul>
-        </nav>
-      </header>
+    <header role="banner">
+      <nav aria-label="breadcrumb" role="navigation">
+        <ul>
+          <li></li>
+        </ul>
+      </nav>
+    </header>
+    <main class="container" role="main">
       <h1 class="h1">News Feeds</h1>
       <ul>
       ${feeds.map(feed => html`
