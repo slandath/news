@@ -20,7 +20,7 @@ const app = new Hono()
 const parser = new Parser()
 
 // Port
-const PORT = Number(process.env.PORT) || 4000
+const PORT = Number(process.env.PORT) || 3000
 
 // Favicon
 app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
