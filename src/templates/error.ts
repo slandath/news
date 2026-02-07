@@ -14,9 +14,9 @@ export function errorTemplate({ title, message }: ErrorTemplateProps): HtmlEscap
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
   </head>
   <body>
-    <main class="container">
-      <header>
-        <nav aria-label="breadcrumb">
+    <main class="container" role="main">
+      <header role="banner">
+        <nav aria-label="breadcrumb" role="navigation">
           <ul>
             <li><a href="/">Home</a></li>
           </ul>
