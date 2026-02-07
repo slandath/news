@@ -38,12 +38,12 @@ cp .env.example .env
 
 Available environment variables:
 
-- `PORT` - Server port (default: 4000)
+- `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment mode: `development` or `production`
 
 The app automatically uses the `PORT` environment variable for deployment platforms like Railway, Heroku, and Render.
 
 ## Usage
 
-- **Home page:** `http://localhost:4000` - View all available feeds
-- **View feed:** `http://localhost:4000/feed?url=<RSS_URL>` - View a specific feed
+- **Home page:** `http://localhost:3000` - View all available feeds
+- **View feed:** `http://localhost:3000/feed?url=<RSS_URL>` - View a specific feed
