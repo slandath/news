@@ -28,7 +28,7 @@ export function feedTemplate({ feed }: FeedTemplateProps) {
       <li>
       ${article.link
         ? html`
-        <a href="/article?url=${encodeURIComponent(article.link)}">
+        <a href="/article?url=${encodeURIComponent(article.link)}}">
         ${article.title}
         </a>
         `

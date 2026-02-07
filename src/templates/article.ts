@@ -26,7 +26,6 @@ export function articleTemplate({
             <nav aria-label="breadcrumb" role="navigation">
               <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/feed">Feed</a></li>
               </ul>
             </nav>
           </header>
