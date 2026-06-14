@@ -4,6 +4,8 @@ export interface ArticleTemplateProps {
   title: string
   article: string[]
   url: string
+  feedTitle?: string
+  feedEncodedURL?: string
 }
 
 export interface BaseFeed {
@@ -33,6 +35,7 @@ export interface Feed extends BaseFeed {
 export interface FeedTemplateProps {
   feed: ParserFeed
   feeds: Feed[]
+  feedURL: string
 }
 
 export interface SiteConfig {

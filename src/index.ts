@@ -25,6 +25,9 @@ const PORT = Number(process.env.PORT) || 3000
 // Favicon
 app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
 
+// CSS Stylesheet
+app.use('/styles.css', serveStatic({ path: './src/templates/styles.css' }))
+
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
 
@@ -50,7 +53,7 @@ app.get('/feed', async (c: Context) => {
       ...f,
       encodedURL: encodeURIComponent(f.url),
     }))
-    const html = feedTemplate({ feed, feeds: feedsWithEncoded })
+    const html = feedTemplate({ feed, feeds: feedsWithEncoded, feedURL })
     return c.html(html)
   }
   catch (error) {
@@ -62,6 +65,8 @@ app.get('/feed', async (c: Context) => {
 // GET /article - Fetch article content and extract body/title using Cheerio
 app.get('/article', async (c: Context) => {
   const urlParam = c.req.query('url')
+  const feedURL = c.req.query('feed')
+  const feed = feeds.find(f => f.url === feedURL)
   if (!urlParam) {
     return c.text('No URL found', 400)
   }
@@ -103,6 +108,8 @@ app.get('/article', async (c: Context) => {
       title,
       article,
       url: parsedUrl.toString(),
+      feedTitle: feed?.title,
+      feedEncodedURL: feed ? encodeURIComponent(feed.url) : undefined,
     })
     return c.html(rendered)
   }

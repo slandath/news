@@ -6,6 +6,8 @@ export function articleTemplate({
   title,
   article,
   url,
+  feedTitle,
+  feedEncodedURL,
 }: ArticleTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   return html`
     <!doctype html>
@@ -13,26 +15,32 @@ export function articleTemplate({
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="color-scheme" content="light dark" />
         <title>${title}</title>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
-        />
+      <link rel="stylesheet" href="/styles.css" />
       </head>
-      <body class="container">
-        <header role="banner">
-          <nav aria-label="breadcrumb" role="navigation">
-            <ul>
-              <li><a href="/">Home</a></li>
-            </ul>
-          </nav>
-        </header>
-      <main role="main">
-        <h1>${title}</h1>
-          <section>
-            ${article.map((para: string) => html`<p>${para}</p>`)}
-            <a href="${url}" target="_blank">Source</a>
+      <body>
+        <div class="section">
+         <header>
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+               <ul>
+                  <li><a href="/">Home</a></li>
+                  ${feedEncodedURL ? html`<li><a href="/feed?url=${feedEncodedURL}">${feedTitle}</a></li>` : ''}
+                  <li class="is-active"><a href="#" aria-current="page">${title}</a></li>
+               </ul>
+            </nav>
+         </header>
+      </div>
+      <main>
+      <section class="hero is-small is-primary">
+         <div class="hero-body">
+            <p class="title">${title}</p>
+         </div>
+      </section>
+          <section class="section">
+            ${article.map((para: string) => html`<p class="py-1">${para}</p>`)}
+            <div class="pt-4">
+            <a href="${url}" class="is-size-5" target="_blank">Source</a>
+            </div>
           </section>
         </main>
       </body>
