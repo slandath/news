@@ -18,7 +18,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.13",
     "cheerio": "^1.2.0",
-    "hono": "^4.12.14",
+    "hono": "^4.12.21",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
