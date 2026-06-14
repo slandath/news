@@ -46,11 +46,14 @@ app.get('/feed', async (c: Context) => {
   }
   try {
     const feed = await parser.parseURL(feedURL)
+    const configuredFeed = feeds.find(f => f.url === feedURL)
+    if (configuredFeed)
+      feed.title = configuredFeed.title
     const feedsWithEncoded = feeds.map(f => ({
       ...f,
       encodedURL: encodeURIComponent(f.url),
     }))
-    const html = feedTemplate({ feed, feeds: feedsWithEncoded })
+    const html = feedTemplate({ feed, feeds: feedsWithEncoded, feedURL })
     return c.html(html)
   }
   catch (error) {
@@ -62,6 +65,8 @@ app.get('/feed', async (c: Context) => {
 // GET /article - Fetch article content and extract body/title using Cheerio
 app.get('/article', async (c: Context) => {
   const urlParam = c.req.query('url')
+  const feedURL = c.req.query('feed')
+  const feed = feeds.find(f => f.url === feedURL)
   if (!urlParam) {
     return c.text('No URL found', 400)
   }
@@ -103,6 +108,8 @@ app.get('/article', async (c: Context) => {
       title,
       article,
       url: parsedUrl.toString(),
+      feedTitle: feed?.title,
+      feedEncodedURL: feed ? encodeURIComponent(feed.url) : undefined,
     })
     return c.html(rendered)
   }

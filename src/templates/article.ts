@@ -2,40 +2,61 @@ import type { HtmlEscapedString } from 'hono/utils/html'
 import type { ArticleTemplateProps } from '../types.js'
 import { html } from 'hono/html'
 
+const truncate = (text: string | undefined, max: number): string => text && text.length > max ? `${text.slice(0, max)}...` : text ?? ''
+
 export function articleTemplate({
   title,
   article,
   url,
+  feedTitle,
+  feedEncodedURL,
 }: ArticleTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   return html`
     <!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="color-scheme" content="light dark" />
-        <title>${title}</title>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
-        />
-      </head>
-      <body class="container">
-        <header role="banner">
-          <nav aria-label="breadcrumb" role="navigation">
-            <ul>
-              <li><a href="/">Home</a></li>
-            </ul>
-          </nav>
-        </header>
-      <main role="main">
-        <h1>${title}</h1>
-          <section>
-            ${article.map((para: string) => html`<p>${para}</p>`)}
-            <a href="${url}" target="_blank">Source</a>
-          </section>
-        </main>
-      </body>
-    </html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>${title}</title>
+      <link
+         rel="stylesheet"
+         href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"
+         >
+   </head>
+   <body>
+      <div class="section">
+         <header>
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+               <ul>
+                  <li><a href="/">Home</a></li>
+                  ${feedEncodedURL
+                    ? html`
+                  <li><a href="/feed?url=${feedEncodedURL}">${feedTitle}</a></li>
+                  `
+                    : ''}
+                  <li class="is-active"><a href="#" aria-current="page">${truncate(title, 30)}</a></li>
+               </ul>
+            </nav>
+         </header>
+      </div>
+      <main>
+         <section class="hero is-small is-primary">
+            <div class="hero-body">
+               <p class="title">${truncate(title, 60)}</p>
+            </div>
+         </section>
+         <section class="section">
+            <div class="container">
+               ${article.map((para: string) => html`
+               <p class="py-2">${para}</p>
+               `)}
+               <div class="pt-4">
+                  <a href="${url}" class="is-size-5" target="_blank">Source</a>
+               </div>
+            </div>
+         </section>
+      </main>
+   </body>
+</html>
   `
 }
