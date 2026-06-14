@@ -25,9 +25,6 @@ const PORT = Number(process.env.PORT) || 3000
 // Favicon
 app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
 
-// CSS Stylesheet
-app.use('/styles.css', serveStatic({ path: './src/templates/styles.css' }))
-
 // Helper to extract domain from URL (e.g., "apnews.com" from "www.apnews.com")
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
 

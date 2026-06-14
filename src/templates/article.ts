@@ -13,41 +13,50 @@ export function articleTemplate({
 }: ArticleTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   return html`
     <!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${title}</title>
-      <link rel="stylesheet" href="/styles.css" />
-      </head>
-      <body>
-        <div class="section">
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>${title}</title>
+      <link
+         rel="stylesheet"
+         href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"
+         >
+   </head>
+   <body>
+      <div class="section">
          <header>
             <nav class="breadcrumb" aria-label="breadcrumbs">
                <ul>
                   <li><a href="/">Home</a></li>
-                  ${feedEncodedURL ? html`<li><a href="/feed?url=${feedEncodedURL}">${feedTitle}</a></li>` : ''}
+                  ${feedEncodedURL
+                    ? html`
+                  <li><a href="/feed?url=${feedEncodedURL}">${feedTitle}</a></li>
+                  `
+                    : ''}
                   <li class="is-active"><a href="#" aria-current="page">${truncate(title, 30)}</a></li>
                </ul>
             </nav>
          </header>
       </div>
       <main>
-      <section class="hero is-small is-primary">
-         <div class="hero-body">
-            <p class="title">${truncate(title, 60)}</p>
-         </div>
-      </section>
-          <section class="section">
-          <div class="container">
-            ${article.map((para: string) => html`<p class="py-2">${para}</p>`)}
-            <div class="pt-4">
-            <a href="${url}" class="is-size-5" target="_blank">Source</a>
+         <section class="hero is-small is-primary">
+            <div class="hero-body">
+               <p class="title">${truncate(title, 60)}</p>
             </div>
+         </section>
+         <section class="section">
+            <div class="container">
+               ${article.map((para: string) => html`
+               <p class="py-2">${para}</p>
+               `)}
+               <div class="pt-4">
+                  <a href="${url}" class="is-size-5" target="_blank">Source</a>
+               </div>
             </div>
-          </section>
-        </main>
-      </body>
-    </html>
+         </section>
+      </main>
+   </body>
+</html>
   `
 }

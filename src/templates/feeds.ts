@@ -1,7 +1,8 @@
+import type { HtmlEscapedString } from 'hono/utils/html'
 import type { FeedTemplateProps } from '../types.js'
 import { html } from 'hono/html'
 
-export function feedTemplate({ feed, feedURL }: FeedTemplateProps) {
+export function feedTemplate({ feed, feedURL }: FeedTemplateProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   return html`
 <!doctype html>
 <html lang="en">
@@ -9,7 +10,10 @@ export function feedTemplate({ feed, feedURL }: FeedTemplateProps) {
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>${feed.title}</title>
-      <link rel="stylesheet" href="/styles.css" />
+      <link
+         rel="stylesheet"
+         href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"
+         >
    </head>
    <body>
       <div class="section">

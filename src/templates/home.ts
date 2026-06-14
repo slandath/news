@@ -9,14 +9,17 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Tom's News</title>
-      <link rel="stylesheet" href="/styles.css" />
+      <link
+         rel="stylesheet"
+         href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"
+         >
    </head>
    <body>
       <div class="section">
          <header>
             <nav class="breadcrumb" aria-label="breadcrumbs">
                <ul>
-                  <li class="is-active"><a href="/">Home</a></li>
+                  <li class="is-active"><a href="/" aria-current="page">Home</a></li>
                </ul>
             </nav>
          </header>
