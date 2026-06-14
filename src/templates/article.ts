@@ -2,6 +2,8 @@ import type { HtmlEscapedString } from 'hono/utils/html'
 import type { ArticleTemplateProps } from '../types.js'
 import { html } from 'hono/html'
 
+const truncate = (text: string | undefined, max: number): string => text && text.length > max ? `${text.slice(0, max)}...` : text ?? ''
+
 export function articleTemplate({
   title,
   article,
@@ -25,7 +27,7 @@ export function articleTemplate({
                <ul>
                   <li><a href="/">Home</a></li>
                   ${feedEncodedURL ? html`<li><a href="/feed?url=${feedEncodedURL}">${feedTitle}</a></li>` : ''}
-                  <li class="is-active"><a href="#" aria-current="page">${title}</a></li>
+                  <li class="is-active"><a href="#" aria-current="page">${truncate(title, 30)}</a></li>
                </ul>
             </nav>
          </header>
@@ -33,13 +35,15 @@ export function articleTemplate({
       <main>
       <section class="hero is-small is-primary">
          <div class="hero-body">
-            <p class="title">${title}</p>
+            <p class="title">${truncate(title, 60)}</p>
          </div>
       </section>
           <section class="section">
-            ${article.map((para: string) => html`<p class="py-1">${para}</p>`)}
+          <div class="container">
+            ${article.map((para: string) => html`<p class="py-2">${para}</p>`)}
             <div class="pt-4">
             <a href="${url}" class="is-size-5" target="_blank">Source</a>
+            </div>
             </div>
           </section>
         </main>

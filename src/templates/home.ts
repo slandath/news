@@ -12,14 +12,14 @@ export function homeTemplate({ feeds }: { feeds: Feed[] }) {
       <link rel="stylesheet" href="/styles.css" />
    </head>
    <body>
-  <div class="section">
-      <header>
-        <nav class="breadcrumb" aria-label="breadcrumbs">
-          <ul>
-            <li class="is-active"><a href="/">Home</a></li>
-          </ul>
-        </nav>
-      </header>
+      <div class="section">
+         <header>
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+               <ul>
+                  <li class="is-active"><a href="/">Home</a></li>
+               </ul>
+            </nav>
+         </header>
       </div>
       <section class="hero is-small is-primary">
          <div class="hero-body">

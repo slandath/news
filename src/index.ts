@@ -49,6 +49,9 @@ app.get('/feed', async (c: Context) => {
   }
   try {
     const feed = await parser.parseURL(feedURL)
+    const configuredFeed = feeds.find(f => f.url === feedURL)
+    if (configuredFeed)
+      feed.title = configuredFeed.title
     const feedsWithEncoded = feeds.map(f => ({
       ...f,
       encodedURL: encodeURIComponent(f.url),
