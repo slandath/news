@@ -33,6 +33,7 @@
   "pnpm": {
     "overrides": {
       "brace-expansion": "^2.1.2",
+      "js-yaml": "^4.3.0",
       "undici": "^7.28.0"
     }
   }
