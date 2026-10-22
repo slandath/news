@@ -23,7 +23,7 @@ describe('siteConfigs', () => {
 
   for (const [domain, fixture] of Object.entries(articleFixturesByDomain)) {
     describe(domain, () => {
-      const fx = fixture as ArticleFixture
+      const fx = fixture
 
       it('extracts the title and paragraphs via its real selectors', () => {
         expect.hasAssertions() // guard for dynamic lookups above

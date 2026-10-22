@@ -24,7 +24,7 @@ app.use('/favicon.ico', serveStatic({ path: './favicon.ico' }))
 const getDomain = (url: URL): string => url.hostname.replace('www.', '')
 
 // GET / - Display home page with list of available feeds
-app.get('/', (c: Context) => {
+app.get('/', async (c: Context): Promise<Response> => {
   const feedsWithEncoded = feeds.map(f => ({
     ...f,
     encodedURL: encodeURIComponent(f.url),
@@ -34,7 +34,7 @@ app.get('/', (c: Context) => {
 })
 
 // GET /feed - Fetch and display RSS feed items
-app.get('/feed', async (c: Context) => {
+app.get('/feed', async (c: Context): Promise<Response> => {
   const feedURL = c.req.query('url') || feeds[0]?.url
   if (!feedURL) {
     return c.text('URL undefined')
@@ -58,7 +58,7 @@ app.get('/feed', async (c: Context) => {
 })
 
 // GET /article - Fetch article content and extract body/title using Cheerio
-app.get('/article', async (c: Context) => {
+app.get('/article', async (c: Context): Promise<Response> => {
   const urlParam = c.req.query('url')
   const feedURL = c.req.query('feed')
   const feed = feeds.find(f => f.url === feedURL)
@@ -124,7 +124,7 @@ app.get('/article', async (c: Context) => {
   }
 })
 
-app.onError((error, c) => {
+app.onError((error, c): Response | Promise<Response> => {
   if (error instanceof HTTPException) {
     console.error(error)
     return c.html(

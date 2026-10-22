@@ -17,9 +17,14 @@ export interface ArticleFixture {
   paragraphs: string[]
 }
 
-/** Removes tags but keeps inner text, mirroring cheerio's .text() */
+/**
+ * Removes tags but keeps inner text.
+ * Implemented with cheerio itself so it is an exact mirror of the
+ * production extraction (html5 parse semantics) instead of a regex
+ * approximation — and therefore correct for any input.
+ */
 export function stripOnlyTags(text: string): string {
-  return text.replace(/<\/?[a-z][^>]*>/gi, '')
+  return cheerio.load(text).text()
 }
 
 const scriptPayload = `<script>alert(1)</script>`
