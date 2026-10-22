@@ -20,10 +20,7 @@
   "forwardPorts": [3000],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "set -e && pnpm install && pnpm build"
-
-  // Configure tool-specific properties.
-  // "customizations": {},
+  "postCreateCommand": "set -e && pnpm install && pnpm build && npm install -g opencode-ai" // "customizations": {},
 
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
   // "remoteUser": "root"
