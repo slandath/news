@@ -4,3 +4,5 @@ node_modules/
 .ENV
 .env
 dist/
+coverage/
+lcov.info

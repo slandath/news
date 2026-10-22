@@ -14,8 +14,13 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 
 ### Testing
 
-- Currently no test suite is configured
-- To add tests in the future, update the `"test"` script in `package.json` (currently just exits with error)
+- **Required for every code change:** run `pnpm test` and verify that it passes before finishing work
+- `pnpm test` - Run the Vitest test suite (all external I/O mocked; runs offline)
+- `pnpm test:watch` - Run Vitest in watch mode
+- `pnpm test:coverage` - Run tests with a V8 coverage report
+- Test files live in `tests/` (unit + `app.request()` route integration), with shared HTML/XML fixtures in `tests/fixtures.ts`
+- `rss-parser` is module-mocked via `vi.mock`; article scraping is tested by stubbing the global `fetch` to serve per-site fixture HTML
+- Note: do not colocate tests inside `src/templates/` — `pnpm build` copies `src/templates` into `dist/`
 
 ### Type Checking
 
@@ -168,7 +173,8 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 
 ## Key Files and Their Purposes
 
-- `src/index.ts` - Main application file with Hono routes and request handlers
+- `src/index.ts` - Server entry point: imports the app and starts `serve()` on the configured port
+- `src/app.ts` - Main application file with Hono app def-export, routes, and request handlers
 - `src/types.ts` - TypeScript interfaces for props and data structures
 - `src/feeds.ts` - Hardcoded list of RSS feed URLs (sorted alphabetically)
 - `src/siteConfigs.ts` - DOM selectors for extracting article content from different news sites
@@ -201,7 +207,8 @@ The application runs on port 4000 and provides:
 
 ## Before Committing
 
-1. Run `pnpm lint:fix` to ensure code style compliance
-2. Run `pnpm build` to verify TypeScript compilation succeeds
-3. Check that no new type errors are introduced
-4. If adding routes or types, update relevant files and interfaces
+1. **Run `pnpm test` and verify all tests pass** after every code change. If a change modifies behavior intentionally, update the affected tests in the same change — never commit with failing tests.
+2. Run `pnpm lint:fix` to ensure code style compliance
+3. Run `pnpm build` to verify TypeScript compilation succeeds
+4. Check that no new type errors are introduced
+5. If adding routes or types, update relevant files and interfaces
