@@ -1,15 +1,11 @@
 package scrape
 
 import (
-	"bytes"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -141,20 +137,4 @@ func TestConfigsStripAllMarkup(t *testing.T) {
 			}
 		})
 	}
-}
-
-func loadFixture(t *testing.T, name string) *goquery.Document {
-	t.Helper()
-
-	body, err := os.ReadFile(filepath.Join("..", "..", "testdata", name))
-	if err != nil {
-		t.Fatalf("read fixture %s: %v", name, err)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	if err != nil {
-		t.Fatalf("parse fixture %s: %v", name, err)
-	}
-
-	return doc
 }
