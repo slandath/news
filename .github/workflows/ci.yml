@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, lint, and test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.27.x']
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      # Generated *_templ.go files are committed so Railpack can build without
+      # running the templ CLI. Fail if a .templ edit was not regenerated.
+      - name: Verify generated templ files are current
+        run: |
+          go tool templ generate
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --porcelain
+            echo "::error::generated templ files are stale; run 'go generate ./...' and commit the result"
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: |
+          test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+          go tool templ fmt -fail .
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -race -coverprofile=cover.out
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+
+      - name: Scan for known vulnerabilities
+        uses: golang/govulncheck-action@v1
