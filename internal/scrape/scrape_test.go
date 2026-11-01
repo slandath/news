@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/slandath/news/internal/fixtures"
 )
 
 // roundTripFunc lets a test stand in for the network, mirroring the TS suite's
@@ -32,14 +34,17 @@ func okResponse(req *http.Request, body io.Reader) *http.Response {
 }
 
 func TestExtractReadsArticle(t *testing.T) {
-	for domain, fx := range articleFixtures {
+	for domain, fx := range fixtures.Articles {
 		t.Run(domain, func(t *testing.T) {
 			cfg, ok := Configs[domain]
 			if !ok {
 				t.Fatalf("no config for %s", domain)
 			}
 
-			body := readFixture(t, fx.file)
+			body, err := fixtures.Read(fx.File)
+			if err != nil {
+				t.Fatalf("read fixture %s: %v", fx.File, err)
+			}
 			var method string
 			client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 				method = req.Method
@@ -57,10 +62,10 @@ func TestExtractReadsArticle(t *testing.T) {
 				t.Errorf("method = %q, want %q", got, want)
 			}
 
-			if diff := cmp.Diff(fx.title, title); diff != "" {
+			if diff := cmp.Diff(fx.Title, title); diff != "" {
 				t.Errorf("title mismatch (-want +got):\n%s", diff)
 			}
-			if diff := cmp.Diff(fx.paragraphs, paragraphs); diff != "" {
+			if diff := cmp.Diff(fx.Paragraphs, paragraphs); diff != "" {
 				t.Errorf("paragraphs mismatch (-want +got):\n%s", diff)
 			}
 
