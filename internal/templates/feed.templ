@@ -1,0 +1,46 @@
+package templates
+
+templ Feed(props FeedProps) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ props.Title }</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"/>
+		</head>
+		<body>
+			<div class="section">
+				<header>
+					<nav class="breadcrumb" aria-label="breadcrumbs">
+						<ul>
+							<li><a href="/">Home</a></li>
+							<li class="is-active"><a href="#" class="truncate" aria-current="page">{ props.Title }</a></li>
+						</ul>
+					</nav>
+				</header>
+			</div>
+			<section class="hero is-small is-primary">
+				<div class="hero-body">
+					<p class="title">{ props.Title }</p>
+				</div>
+			</section>
+			<main class="section">
+				<section id="content">
+					<ul>
+						for _, item := range props.Items {
+							<li class="py-3">
+								if item.Href != "" {
+									<a href={ item.Href }>{ item.Title }</a>
+								} else {
+									{ item.Title }
+								}
+								<p>{ item.Published }</p>
+							</li>
+						}
+					</ul>
+				</section>
+			</main>
+		</body>
+	</html>
+}

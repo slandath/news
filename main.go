@@ -77,7 +77,9 @@ func run() error {
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := templates.HomePage().Render(r.Context(), w); err != nil {
+	// Phase 6 replaces this with the real feed list; the component is wired up
+	// now so the scaffold keeps building through the template phase.
+	if err := templates.Home(templates.HomeProps{}).Render(r.Context(), w); err != nil {
 		slog.Error("render home", "err", err)
 	}
 }
