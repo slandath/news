@@ -2,11 +2,16 @@ module github.com/slandath/news
 
 go 1.27.3
 
-require github.com/a-h/templ v0.3.1100
+require (
+	github.com/PuerkitoBio/goquery v1.13.0
+	github.com/a-h/templ v0.3.1100
+	github.com/google/go-cmp v0.7.0
+)
 
 require (
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/andybalholm/brotli v1.2.7 // indirect
+	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cli/browser v1.3.0 // indirect
 	github.com/fatih/color v1.19.0 // indirect
