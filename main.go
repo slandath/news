@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -12,7 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/slandath/news/internal/templates"
+	"github.com/slandath/news/internal/app"
+	"github.com/slandath/news/internal/feeds"
+	"github.com/slandath/news/internal/rss"
+	"github.com/slandath/news/internal/scrape"
 )
 
 //go:embed favicon.ico
@@ -21,6 +23,9 @@ var favicon []byte
 const (
 	defaultPort     = "3000"
 	shutdownTimeout = 10 * time.Second
+
+	// articleTimeout covers connect, headers, and body for one article fetch.
+	articleTimeout = 5 * time.Second
 )
 
 func main() {
@@ -40,14 +45,17 @@ func run() error {
 		port = defaultPort
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", handleHome)
-	mux.HandleFunc("GET /health", handleHealth)
-	mux.HandleFunc("GET /favicon.ico", handleFavicon)
+	handler := app.New(app.Deps{
+		Feeds:   feeds.All,
+		Configs: scrape.Configs,
+		Parser:  rss.New(),
+		Scraper: scrape.New(&http.Client{Timeout: articleTimeout}),
+		Favicon: favicon,
+	})
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -73,28 +81,4 @@ func run() error {
 	defer cancel()
 
 	return srv.Shutdown(shutdownCtx)
-}
-
-func handleHome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Phase 6 replaces this with the real feed list; the component is wired up
-	// now so the scaffold keeps building through the template phase.
-	if err := templates.Home(templates.HomeProps{}).Render(r.Context(), w); err != nil {
-		slog.Error("render home", "err", err)
-	}
-}
-
-// handleHealth answers "can this process serve" and must not touch any
-// dependency; Railway uses it to gate traffic during deploys.
-func handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if _, err := w.Write([]byte("ok")); err != nil {
-		slog.Error("write health", "err", err)
-	}
-}
-
-func handleFavicon(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "image/x-icon")
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	http.ServeContent(w, r, "favicon.ico", time.Time{}, bytes.NewReader(favicon))
 }
