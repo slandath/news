@@ -1,17 +1,17 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
-  "name": "Node.js & TypeScript",
+  "name": "Go",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:24",
+  "image": "mcr.microsoft.com/devcontainers/go:1.27",
 
   // Features to add to the dev container. More info: https://containers.dev/features.
   // "features": {},
   "customizations": {
     "vscode": {
       "extensions": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
+        "golang.go",
+        "a-h.templ"
       ]
     }
   },
@@ -19,8 +19,10 @@
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [3000],
 
-  // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "set -e && pnpm install && pnpm build && npm install -g opencode-ai" // "customizations": {},
+  // Modules are committed in go.sum and generated *_templ.go files are committed,
+  // so there is nothing to build before hacking. opencode installs itself to
+  // ~/.opencode/bin and adds that directory to ~/.bashrc.
+  "postCreateCommand": "set -e && go mod download && curl -fsSL https://opencode.ai/v2/install | bash"
 
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
   // "remoteUser": "root"

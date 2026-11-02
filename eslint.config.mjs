@@ -1,6 +1,9 @@
 import antfu from '@antfu/eslint-config'
 
 export default antfu({
+  // testdata/ holds verbatim hostile-payload fixtures; prettier's HTML
+  // formatter would change whitespace and thus what cheerio/goquery extract.
+  ignores: ['testdata/**'],
   formatters: {
     /**
      * Format CSS, LESS, SCSS files, also the `<style>` blocks in Vue
