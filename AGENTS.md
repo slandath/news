@@ -1,6 +1,6 @@
 # AI Agent Guidelines
 
-This file provides instructions for AI coding assistants working on the RSS Feed Reader project. The codebase is pure Go (Go 1.27); there is no TypeScript left in the runtime — `package.json` exists only for repo-wide Markdown linting (`pnpm lint` / `pnpm lint:fix`).
+This file provides instructions for AI coding assistants working on the RSS Feed Reader project. The codebase is pure Go (Go 1.27); there is no Node, TypeScript, or package-manager tooling left anywhere in the repo.
 
 ## Build, Lint, and Test Commands
 
@@ -25,7 +25,8 @@ This file provides instructions for AI coding assistants working on the RSS Feed
 - `go tool golangci-lint run ./...` - Config in `.golangci.yml`: standard set plus `revive`, `gocritic`, `bodyclose`, `noctx`
 - `golangci-lint` is pinned as a `tool` directive in `go.mod` so Dependabot bumps it. After a bump, **re-run the whole test suite** — new linter versions can surface findings
 - `go vet ./...` - Always run it
-- `pnpm lint:fix` - Prettier formatting for Markdown (and other non-TS assets) via the antfu config in `eslint.config.mjs`; run it after editing docs
+
+Formatting and linting are enforced in CI (`.github/workflows/ci.yml`): the staleness gate, `gofmt -l .`, `go tool templ fmt -fail .`, `go vet`, `-race` tests, `golangci-lint`, and govulncheck all block a merge. There is no separate lint workflow.
 
 ### Vulnerabilities
 
@@ -115,8 +116,7 @@ Endpoints: `/`, `/feed?url=`, `/article?url=` (optional `&feed=`), `/health`, `/
 ## Before Committing
 
 1. `go tool templ generate` after any `.templ` edit — and commit the generated files. CI rejects stale output
-2. `pnpm test` is retired; run `go test ./... -race` and keep it green. If a change intentionally alters behavior, update tests in the same commit — never commit red
+2. Run `go test ./... -race` and keep it green. If a change intentionally alters behavior, update tests in the same commit — never commit red
 3. `gofmt -l .` and `go tool templ fmt -fail .` must report nothing
 4. `go vet ./...` and `go tool golangci-lint run ./...` must be quiet
-5. `pnpm lint:fix` for Markdown files touched by this change
-6. New scrape target ⇒ config entry + `testdata/<site>.html` fixture + `internal/fixtures` entry, all three together
+5. New scrape target ⇒ config entry + `testdata/<site>.html` fixture + `internal/fixtures` entry, all three together
