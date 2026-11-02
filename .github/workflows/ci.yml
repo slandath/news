@@ -58,6 +58,10 @@ jobs:
 
       - name: Lint
         uses: golangci/golangci-lint-action@v9
+        with:
+          # Pinned so a new release cannot change the ruleset mid-review.
+          # Bump it alongside .golangci.yml and re-run the suite before landing.
+          version: v2.15.0
 
       - name: Scan for known vulnerabilities
         uses: golang/govulncheck-action@v1

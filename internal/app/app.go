@@ -93,7 +93,7 @@ func (a *App) wrap(next handler) http.Handler {
 		var httpErr *httpError
 		if errors.As(err, &httpErr) {
 			page := templates.Error(templates.ErrorProps{Title: "Error", Message: httpErr.Msg})
-			if renderErr := writeHTML(recorder, r.Context(), httpErr.Status, page); renderErr != nil {
+			if renderErr := writeHTML(r.Context(), recorder, httpErr.Status, page); renderErr != nil {
 				slog.Error("render error page", "err", renderErr)
 			}
 			return
@@ -159,7 +159,7 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) error {
 		})
 	}
 
-	return writeHTML(w, r.Context(), http.StatusOK, templates.Home(templates.HomeProps{Feeds: links}))
+	return writeHTML(r.Context(), w, http.StatusOK, templates.Home(templates.HomeProps{Feeds: links}))
 }
 
 func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
@@ -198,7 +198,7 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		items = append(items, rendered)
 	}
 
-	return writeHTML(w, r.Context(), http.StatusOK, templates.Feed(templates.FeedProps{
+	return writeHTML(r.Context(), w, http.StatusOK, templates.Feed(templates.FeedProps{
 		Title: title,
 		Items: items,
 	}))
@@ -263,7 +263,7 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 		props.FeedHref = feedHref(feed.URL)
 	}
 
-	return writeHTML(w, r.Context(), http.StatusOK, templates.Article(props))
+	return writeHTML(r.Context(), w, http.StatusOK, templates.Article(props))
 }
 
 func (a *App) handleFavicon(w http.ResponseWriter, r *http.Request) error {

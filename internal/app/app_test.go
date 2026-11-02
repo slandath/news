@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	htmlpkg "html"
@@ -109,7 +110,7 @@ func do(t *testing.T, handler http.Handler, target string) *httptest.ResponseRec
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, target, nil))
 
 	return rec
 }

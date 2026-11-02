@@ -34,7 +34,7 @@ func writeText(w http.ResponseWriter, status int, msg string) {
 
 // writeHTML renders component into a buffer first, so a render failure can
 // still become a clean error response instead of a half-written page.
-func writeHTML(w http.ResponseWriter, ctx context.Context, status int, component templ.Component) error {
+func writeHTML(ctx context.Context, w http.ResponseWriter, status int, component templ.Component) error {
 	var buf bytes.Buffer
 	if err := component.Render(ctx, &buf); err != nil {
 		return fmt.Errorf("render: %w", err)

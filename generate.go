@@ -1,3 +1,4 @@
+// Command news generates templ code via go generate.
 package main
 
 // Regenerate the templ components after editing any *.templ file.

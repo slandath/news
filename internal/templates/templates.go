@@ -50,12 +50,12 @@ type ErrorProps struct {
 	Message string
 }
 
-// truncate shortens text to max runes and appends an ellipsis. It counts runes,
+// truncate shortens text to limit runes and appends an ellipsis. It counts runes,
 // not bytes or UTF-16 code units, so it never splits a multi-byte character.
-func truncate(text string, max int) string {
+func truncate(text string, limit int) string {
 	runes := []rune(text)
-	if len(runes) <= max {
+	if len(runes) <= limit {
 		return text
 	}
-	return string(runes[:max]) + "..."
+	return string(runes[:limit]) + "..."
 }
