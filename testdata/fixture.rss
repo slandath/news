@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Fixture Feed &amp; Wire</title>
+    <link>https://example.com</link>
+    <description>A test feed</description>
+    <item>
+      <title>Item &lt;script&gt;one&lt;/script&gt;</title>
+      <link>https://example.com/story-1</link>
+      <description>First story &lt;b&gt;bold&lt;/b&gt;</description>
+      <pubDate>Wed, 21 Oct 2026 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Item two &amp;&amp; more</title>
+      <link>https://example.com/story-2</link>
+      <pubDate>Wed, 21 Oct 2026 11:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

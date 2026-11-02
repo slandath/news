@@ -1,8 +1,7 @@
-.pnpm-store/
 .DS_Store
-node_modules/
 .ENV
 .env
-dist/
-coverage/
-lcov.info
+
+# Go
+/news
+cover.out

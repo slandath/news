@@ -1,0 +1,45 @@
+package templates
+
+templ Article(props ArticleProps) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ props.Title }</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"/>
+		</head>
+		<body>
+			<div class="section">
+				<header>
+					<nav class="breadcrumb" aria-label="breadcrumbs">
+						<ul>
+							<li><a href="/">Home</a></li>
+							if props.FeedHref != "" {
+								<li><a href={ props.FeedHref }>{ props.FeedTitle }</a></li>
+							}
+							<li class="is-active"><a href="#" aria-current="page">{ truncate(props.Title, 30) }</a></li>
+						</ul>
+					</nav>
+				</header>
+			</div>
+			<main>
+				<section class="hero is-small is-primary">
+					<div class="hero-body">
+						<p class="title">{ truncate(props.Title, 60) }</p>
+					</div>
+				</section>
+				<section class="section">
+					<div class="container">
+						for _, para := range props.Paragraphs {
+							<p class="py-2">{ para }</p>
+						}
+						<div class="pt-4">
+							<a href={ props.SourceURL } class="is-size-5" target="_blank">Source</a>
+						</div>
+					</div>
+				</section>
+			</main>
+		</body>
+	</html>
+}
