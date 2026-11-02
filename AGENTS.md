@@ -49,6 +49,7 @@ The HTTP behaviors are deliberately mixed; don't "unify" them:
 | missing `url` param         | 400     | plain text `No URL found`                    |
 | non-http(s) protocol        | 400     | plain text `Invalid URL protocol`            |
 | malformed URL (no host)     | 400     | plain text `Invalid URL`                     |
+| unconfigured feed `url`     | 400     | plain text `Invalid feed URL`, no outbound request |
 | empty feed list             | 400     | plain text `URL undefined`                   |
 | fetch/parse feed failure    | 502     | full error page, "Bad Feed"                  |
 | article fetch timeout       | **504** | full error page, "Request Timeout"           |
@@ -69,6 +70,7 @@ Rules behind the table:
 - `internal/feeds.Feed` entries are in **hardcoded display order**. Never sort feeds at runtime — ICU `localeCompare` and Go's byte-order `<` disagree on this data, and the order is asserted by tests
 - A configured feed's title overrides the feed's own `<title>`
 - An absent/empty `?url=` on `/feed` falls back to `feeds.All[0]` with status 200 (not a 400)
+- Only **configured** feed URLs are fetchable on `/feed`: `url.Values` are client-controlled and a feed URL outside `feeds.All` gets a plain-text 400 `Invalid feed URL` with no outbound request. This is a deliberate deviation from the TS app (which fetched any URL); approved during the pre-merge review
 - Missing `pubDate` renders as an empty cell; never render the literal `undefined`
 
 ### URLs and hosts
@@ -90,7 +92,7 @@ Rules behind the table:
 ## Key Files and Their Purposes
 
 - `main.go` - Entrypoint: `PORT` (default `3000`), route registration, graceful shutdown, embedded favicon
-- `generate.go` - `go.generate ./...` drives `go tool templ generate`
+- `generate.go` - `go generate ./...` drives `go tool templ generate`
 - `internal/app/app.go` - Routes, handlers, request logging + recovery middleware, href builders
 - `internal/app/errors.go` - Error surfaces (plain-text 400s, `redirect()`, `writeHTML` for 502/504/500 pages)
 - `internal/feeds/feeds.go` - The hardcoded feed list in display order

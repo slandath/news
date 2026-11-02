@@ -12,7 +12,7 @@ readable feed index and article pages.
 
 ## Tech Stack
 
-[![Go](https://img.shields.io/badge/Go-1.27-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.27.3-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev)
 [![templ](https://img.shields.io/badge/templ-0.3.1100-blue?style=for-the-badge)](https://github.com/a-h/templ)
 [![gofeed](https://img.shields.io/badge/gofeed-1.5.0-black?style=for-the-badge)](https://github.com/mmcdole/gofeed)
 [![goquery](https://img.shields.io/badge/goquery-1.13.0-CD853F?style=for-the-badge)](https://github.com/PuerkitoBio/goquery)
@@ -21,7 +21,7 @@ readable feed index and article pages.
 
 ## Getting Started
 
-Requires [Go 1.27+](https://go.dev/dl/).
+Requires [Go 1.27.3+](https://go.dev/dl/).
 
 ```bash
 go run .
@@ -40,7 +40,7 @@ Railway, Heroku, and Render set `PORT` for you; the server picks it up automatic
 ## Endpoints
 
 - `GET /` - Home page listing all feeds
-- `GET /feed?url=<RSS_URL>` - Items for a feed (empty or missing `url` falls back to the first configured feed)
+- `GET /feed?url=<RSS_URL>` - Items for a feed (empty or missing `url` falls back to the first configured feed; only configured feed URLs are fetchable, anything else gets a 400)
 - `GET /article?url=<ARTICLE_URL>` - Extracted text for an article; unconfigured outlets redirect to the source URL
 - `GET /health` - Health check for the deploy platform
 - `GET /favicon.ico` - Favicon, embedded in the binary

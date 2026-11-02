@@ -196,7 +196,7 @@ type Parser interface { ParseURL(url string) (*gofeed.Feed, error) }
 
 ### Phase 4 — Scrape layer (1 day)
 
-1. `internal/scrape/scrape.go`: `func (s *Scraper) Extract(ctx, rawURL string, cfg SiteConfig) (title string, paragraphs []string, err error)`.
+1. `internal/scrape/scrape.go`: `func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (title string, paragraphs []string, err error)`.
 2. `&http.Client{Timeout: 5 * time.Second}`, injectable. Covers connect + headers + body, which is what the current `AbortController` intends. See §8.4 for error detection.
 3. `goquery.NewDocumentFromReader(bytes.NewReader(body))`, then `doc.Find(cfg.Article).Each(...)` collecting `Selection.Text()` — mirrors `.map((_, el) => $(el).text()).get()`.
 4. Enforce the text-only invariant structurally: `ArticleWrapper` returns `[]string`, never `templ.Component`/`template.HTML`. There is no type-level path from scraped text to raw output.
@@ -311,7 +311,7 @@ jobs:
 | -------------------------------------- | ------- | --------------------------------------------------------- |
 | `GET /`                                | 200     | lists all 8 feeds, links `/feed?url=<encoded>`            |
 | `GET /feed`                            | 200     | defaults to `feeds.All[0]` (`/Film`)                      |
-| `GET /feed?url=<valid>`                | 200     | items with title, `pubDate`, `/article?url=…&feed=…` link |
+| `GET /feed?url=<valid>`                | 200     | items with title, `pubDate`, `/article?feed=…&url=…` link (`url.Values.Encode()` order) |
 | `GET /feed?url=<unreachable>`          | 502     | `error.templ`, "Bad Feed"                                 |
 | `GET /feed?url=` (empty)               | 200     | falls back to `feeds.All[0]` — see note below             |
 | `GET /article`                         | 400     | `No URL found`, no outbound request                       |

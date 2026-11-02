@@ -285,6 +285,24 @@ func TestFeedReturns400WhenFeedListIsEmpty(t *testing.T) {
 	}
 }
 
+func TestFeedRejectsUnconfiguredFeedURL(t *testing.T) {
+	transport := newStubTransport(t)
+	handler := newTestHandler(t, transport)
+	notInList := "https://example.com/feed.xml"
+
+	rec := do(t, handler, "/feed?url="+url.QueryEscape(notInList))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got, want := rec.Body.String(), "Invalid feed URL"; got != want {
+		t.Errorf("body = %q, want %q", got, want)
+	}
+	if len(transport.requests) != 0 {
+		t.Errorf("made %d outbound requests, want none", len(transport.requests))
+	}
+}
+
 func TestArticleRendersEachConfiguredSite(t *testing.T) {
 	for domain, article := range fixtures.Articles {
 		t.Run(domain, func(t *testing.T) {

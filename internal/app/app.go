@@ -174,6 +174,16 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
+	// Only configured feeds are fetchable. The URL param is client-controlled
+	// and the parser fetches whatever it is handed, so an unrestricted value
+	// turns the server into a fetch proxy for internal services. The article
+	// path already restricts hosts to scrape.Configs the same way.
+	configured, ok := a.configuredFeed(feedURL)
+	if !ok {
+		writeText(w, http.StatusBadRequest, "Invalid feed URL")
+		return nil
+	}
+
 	feed, err := a.parser.ParseURLWithContext(feedURL, r.Context())
 	if err != nil {
 		return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
@@ -181,10 +191,7 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 
 	// A configured feed's own title wins over whatever the feed calls itself,
 	// so the page and the navigation agree.
-	title := feed.Title
-	if configured, ok := a.configuredFeed(feedURL); ok {
-		title = configured.Title
-	}
+	title := configured.Title
 
 	items := make([]templates.FeedItem, 0, len(feed.Items))
 	for _, item := range feed.Items {
