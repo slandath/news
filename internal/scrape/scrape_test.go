@@ -54,9 +54,12 @@ func TestExtractReadsArticle(t *testing.T) {
 				return okResponse(req, bytes.NewReader(body)), nil
 			})}
 
-			title, paragraphs, err := New(client).Extract(context.Background(), "https://www."+domain+"/story", cfg)
+			title, paragraphs, status, err := New(client).Extract(context.Background(), "https://www."+domain+"/story", cfg)
 			if err != nil {
 				t.Fatalf("Extract: %v", err)
+			}
+			if status != http.StatusOK {
+				t.Errorf("status = %d, want %d", status, http.StatusOK)
 			}
 			if got, want := method, http.MethodGet; got != want {
 				t.Errorf("method = %q, want %q", got, want)
@@ -79,7 +82,7 @@ func TestExtractReadsArticle(t *testing.T) {
 }
 
 func TestExtractRejectsMalformedURL(t *testing.T) {
-	_, _, err := New(&http.Client{}).Extract(context.Background(), "://bad", Configs["cnbc.com"])
+	_, _, _, err := New(&http.Client{}).Extract(context.Background(), "://bad", Configs["cnbc.com"])
 	if err == nil {
 		t.Fatal("Extract accepted a URL with no scheme")
 	}
@@ -91,7 +94,7 @@ func TestExtractWrapsReadError(t *testing.T) {
 		return okResponse(req, errorReader{sentinel}), nil
 	})}
 
-	_, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	_, _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("err = %v, want it to wrap %v", err, sentinel)
 	}
@@ -107,7 +110,7 @@ func TestExtractWrapsTransportError(t *testing.T) {
 		return nil, sentinel
 	})}
 
-	_, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	_, _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("err = %v, want it to wrap %v", err, sentinel)
 	}
@@ -123,7 +126,7 @@ func TestExtractPropagatesCancellation(t *testing.T) {
 		return nil, req.Context().Err()
 	})}
 
-	_, _, err := New(client).Extract(ctx, "https://www.cnbc.com/story", Configs["cnbc.com"])
+	_, _, _, err := New(client).Extract(ctx, "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}
@@ -148,7 +151,7 @@ func TestExtractCapsResponseBody(t *testing.T) {
 		return okResponse(req, body), nil
 	})}
 
-	if _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"]); err != nil {
+	if _, _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"]); err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
 
@@ -184,5 +187,35 @@ func TestIsTimeout(t *testing.T) {
 				t.Errorf("IsTimeout(%v) = %t, want %t", test.err, got, test.want)
 			}
 		})
+	}
+}
+
+// A non-2xx origin body is still extracted — rendering behavior is unchanged —
+// but its status is reported so callers can decide, for example, not to
+// cache it.
+func TestExtractReportsNonOKStatus(t *testing.T) {
+	body, err := fixtures.Read(fixtures.Articles["cnbc.com"].File)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		resp := okResponse(req, bytes.NewReader(body))
+		resp.StatusCode = http.StatusServiceUnavailable
+
+		return resp, nil
+	})}
+
+	title, paragraphs, status, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	if status != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", status, http.StatusServiceUnavailable)
+	}
+
+	if title == "" || len(paragraphs) == 0 {
+		t.Error("non-2xx body was not extracted, want rendering behavior preserved")
 	}
 }
