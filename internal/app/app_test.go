@@ -516,3 +516,37 @@ func TestFavicon(t *testing.T) {
 		t.Errorf("body = %q, want %q", got, want)
 	}
 }
+
+func TestUnknownPathRendersNotFound(t *testing.T) {
+	transport := newStubTransport(t)
+	handler := newTestHandler(t, transport)
+
+	for _, target := range []string{"/nope", "/feed/extra", "/article/"} {
+		rec := do(t, handler, target)
+
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want %d", target, rec.Code, http.StatusNotFound)
+		}
+
+		body := rec.Body.String()
+		if !strings.Contains(body, "Not Found") {
+			t.Errorf("GET %s page is missing %q", target, "Not Found")
+		}
+
+		if got, want := rec.Header().Get("Content-Type"), "text/html; charset=utf-8"; got != want {
+			t.Errorf("GET %s Content-Type = %q, want %q", target, got, want)
+		}
+	}
+
+	// The catch-all is method-agnostic: unknown paths 404 however reached.
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/nope", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("POST /nope status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	if len(transport.requests) != 0 {
+		t.Errorf("made %d outbound requests, want none", len(transport.requests))
+	}
+}

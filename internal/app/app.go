@@ -97,6 +97,9 @@ func New(deps Deps) http.Handler {
 	mux.Handle("GET /article", app.wrap(app.handleArticle))
 	mux.Handle("GET /favicon.ico", app.wrap(app.handleFavicon))
 	mux.Handle("GET /health", app.wrap(app.handleHealth))
+	// Unqualified "/" is the least specific pattern, so it only sees what
+	// nothing above matched: every method on every unknown path.
+	mux.Handle("/", app.wrap(app.handleNotFound))
 
 	return mux
 }
@@ -398,6 +401,13 @@ func (a *App) handleFavicon(w http.ResponseWriter, r *http.Request) error {
 	http.ServeContent(w, r, "favicon.ico", time.Time{}, bytes.NewReader(a.favicon))
 
 	return nil
+}
+
+func (a *App) handleNotFound(w http.ResponseWriter, r *http.Request) error {
+	return writeHTML(r.Context(), w, http.StatusNotFound, templates.Error(templates.ErrorProps{
+		Title:   "Not Found",
+		Message: "Page not found.",
+	}))
 }
 
 func (a *App) handleHealth(w http.ResponseWriter, _ *http.Request) error {
