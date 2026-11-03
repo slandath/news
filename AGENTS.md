@@ -56,7 +56,7 @@ The HTTP behaviors are deliberately mixed; don't "unify" them:
 | article fetch other failure | 302     | `Location: <source URL>`                     |
 | unconfigured article domain | 302     | `Location: <source URL>`                     |
 | panic                       | 500     | full error page, "Internal Server Error"     |
-| unknown path                | (none)  | no catch-all 404 handler; Go default applies |
+| unknown path                | 404     | full error page, "Not Found"                 |
 
 Rules behind the table:
 
