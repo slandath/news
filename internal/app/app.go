@@ -12,39 +12,70 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mmcdole/gofeed"
+	"github.com/slandath/news/internal/cache"
 	"github.com/slandath/news/internal/feeds"
 	"github.com/slandath/news/internal/rss"
 	"github.com/slandath/news/internal/scrape"
 	"github.com/slandath/news/internal/templates"
 )
 
+// FeedCacheTTL bounds how long a parsed feed is reused: most feeds update
+// every 15-60 minutes, so 5 minutes keeps pages fresh without refetching per
+// visitor. ArticleCacheTTL is longer because published articles rarely change.
+const (
+	FeedCacheTTL    = 5 * time.Minute
+	ArticleCacheTTL = time.Hour
+)
+
+// feedCacheControl and articleCacheControl mirror the TTLs above so browsers
+// and CDNs reuse the same responses the server cache serves.
+const (
+	feedCacheControl    = "public, max-age=300"
+	articleCacheControl = "public, max-age=3600"
+)
+
+// Article is one scraped article: plain title and body paragraphs, never
+// markup. It is the value type of the article cache.
+type Article struct {
+	Title      string
+	Paragraphs []string
+}
+
 // Deps is everything the handlers need. Nothing is read from package-level
-// state, so tests can build an app with stubs for any subset.
+// state, so tests can build an app with stubs for any subset. A nil
+// FeedCache or ArticleCache disables that cache.
 type Deps struct {
-	Feeds   []feeds.Feed
-	Configs map[string]scrape.SiteConfig
-	Parser  rss.Parser
-	Scraper *scrape.Scraper
-	Favicon []byte
+	Feeds        []feeds.Feed
+	Configs      map[string]scrape.SiteConfig
+	Parser       rss.Parser
+	Scraper      *scrape.Scraper
+	Favicon      []byte
+	FeedCache    *cache.Cache[*gofeed.Feed]
+	ArticleCache *cache.Cache[Article]
 }
 
 // App holds the injected dependencies for the handlers.
 type App struct {
-	feeds   []feeds.Feed
-	configs map[string]scrape.SiteConfig
-	parser  rss.Parser
-	scraper *scrape.Scraper
-	favicon []byte
+	feeds        []feeds.Feed
+	configs      map[string]scrape.SiteConfig
+	parser       rss.Parser
+	scraper      *scrape.Scraper
+	favicon      []byte
+	feedCache    *cache.Cache[*gofeed.Feed]
+	articleCache *cache.Cache[Article]
 }
 
 // New returns the application handler.
 func New(deps Deps) http.Handler {
 	app := &App{
-		feeds:   deps.Feeds,
-		configs: deps.Configs,
-		parser:  deps.Parser,
-		scraper: deps.Scraper,
-		favicon: deps.Favicon,
+		feeds:        deps.Feeds,
+		configs:      deps.Configs,
+		parser:       deps.Parser,
+		scraper:      deps.Scraper,
+		favicon:      deps.Favicon,
+		feedCache:    deps.FeedCache,
+		articleCache: deps.ArticleCache,
 	}
 
 	mux := http.NewServeMux()
@@ -184,10 +215,31 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	feed, err := a.parser.ParseURLWithContext(feedURL, r.Context())
-	if err != nil {
-		return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
+	var feed *gofeed.Feed
+
+	if a.feedCache != nil {
+		var ok bool
+		if feed, ok = a.feedCache.Get(feedURL); ok {
+			slog.Info("feed cache hit", "url", feedURL)
+		} else {
+			slog.Debug("feed cache miss", "url", feedURL)
+		}
 	}
+
+	if feed == nil {
+		parsed, err := a.parser.ParseURLWithContext(feedURL, r.Context())
+		if err != nil {
+			return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
+		}
+
+		feed = parsed
+
+		if a.feedCache != nil {
+			a.feedCache.Set(feedURL, feed)
+		}
+	}
+
+	w.Header().Set("Cache-Control", feedCacheControl)
 
 	// A configured feed's own title wins over whatever the feed calls itself,
 	// so the page and the navigation agree.
@@ -249,16 +301,45 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	title, paragraphs, err := a.scraper.Extract(r.Context(), sourceURL, config)
-	if err != nil {
-		if scrape.IsTimeout(err) {
-			return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
+	var (
+		title      string
+		paragraphs []string
+		cached     bool
+	)
+
+	if a.articleCache != nil {
+		var entry Article
+
+		var ok bool
+		if entry, ok = a.articleCache.Get(sourceURL); ok {
+			slog.Info("article cache hit", "url", sourceURL)
+
+			title, paragraphs, cached = entry.Title, entry.Paragraphs, true
+		} else {
+			slog.Debug("article cache miss", "url", sourceURL)
+		}
+	}
+
+	if !cached {
+		var err error
+
+		title, paragraphs, err = a.scraper.Extract(r.Context(), sourceURL, config)
+		if err != nil {
+			if scrape.IsTimeout(err) {
+				return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
+			}
+
+			slog.Error("scrape article", "url", sourceURL, "err", err)
+			redirect(w, sourceURL)
+			return nil
 		}
 
-		slog.Error("scrape article", "url", sourceURL, "err", err)
-		redirect(w, sourceURL)
-		return nil
+		if a.articleCache != nil {
+			a.articleCache.Set(sourceURL, Article{Title: title, Paragraphs: paragraphs})
+		}
 	}
+
+	w.Header().Set("Cache-Control", articleCacheControl)
 
 	props := templates.ArticleProps{
 		Title:      title,
