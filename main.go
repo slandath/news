@@ -47,6 +47,9 @@ func run() error {
 		port = defaultPort
 	}
 
+	articleCache := cache.New[app.Article](app.ArticleCacheTTL)
+	articleCache.SetMaxEntries(app.ArticleCacheMaxEntries)
+
 	handler := app.New(app.Deps{
 		Feeds:        feeds.All,
 		Configs:      scrape.Configs,
@@ -54,7 +57,7 @@ func run() error {
 		Scraper:      scrape.New(&http.Client{Timeout: articleTimeout}),
 		Favicon:      favicon,
 		FeedCache:    cache.New[*gofeed.Feed](app.FeedCacheTTL),
-		ArticleCache: cache.New[app.Article](app.ArticleCacheTTL),
+		ArticleCache: articleCache,
 	})
 
 	srv := &http.Server{

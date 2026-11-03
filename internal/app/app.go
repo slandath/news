@@ -6,9 +6,11 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,12 +30,23 @@ const (
 	ArticleCacheTTL = time.Hour
 )
 
-// feedCacheControl and articleCacheControl mirror the TTLs above so browsers
-// and CDNs reuse the same responses the server cache serves.
-const (
-	feedCacheControl    = "public, max-age=300"
-	articleCacheControl = "public, max-age=3600"
-)
+// ArticleCacheMaxEntries bounds the article cache. Article keys are
+// caller-controlled URLs with an open key space, unlike the closed list of
+// feed URLs, so the cap keeps one-off URLs from growing memory without bound.
+const ArticleCacheMaxEntries = 1000
+
+// cacheControl builds a Cache-Control header from a remaining lifetime.
+// Ceiling keeps a just-stored entry advertising exactly its TTL instead of
+// one second less, and a hit near expiry advertising only what is left, so a
+// browser or CDN never holds the response longer than the server would.
+func cacheControl(lifetime time.Duration) string {
+	secs := int(math.Ceil(lifetime.Seconds()))
+	if secs < 0 {
+		secs = 0
+	}
+
+	return "public, max-age=" + strconv.Itoa(secs)
+}
 
 // Article is one scraped article: plain title and body paragraphs, never
 // markup. It is the value type of the article cache.
@@ -217,10 +230,17 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 
 	var feed *gofeed.Feed
 
+	lifetime := FeedCacheTTL
+
 	if a.feedCache != nil {
-		var ok bool
-		if feed, ok = a.feedCache.Get(feedURL); ok {
+		var (
+			remaining time.Duration
+			ok        bool
+		)
+
+		if feed, remaining, ok = a.feedCache.Get(feedURL); ok {
 			slog.Info("feed cache hit", "url", feedURL)
+			lifetime = remaining
 		} else {
 			slog.Debug("feed cache miss", "url", feedURL)
 		}
@@ -239,7 +259,7 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	w.Header().Set("Cache-Control", feedCacheControl)
+	w.Header().Set("Cache-Control", cacheControl(lifetime))
 
 	// A configured feed's own title wins over whatever the feed calls itself,
 	// so the page and the navigation agree.
@@ -307,23 +327,37 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 		cached     bool
 	)
 
-	if a.articleCache != nil {
-		var entry Article
+	lifetime := ArticleCacheTTL
 
-		var ok bool
-		if entry, ok = a.articleCache.Get(sourceURL); ok {
-			slog.Info("article cache hit", "url", sourceURL)
+	if a.articleCache != nil {
+		var (
+			entry     Article
+			remaining time.Duration
+			ok        bool
+		)
+
+		if entry, remaining, ok = a.articleCache.Get(sourceURL); ok {
+			slog.Info("article cache hit", "host", source.Host, "path", source.Path)
 
 			title, paragraphs, cached = entry.Title, entry.Paragraphs, true
+			lifetime = remaining
 		} else {
-			slog.Debug("article cache miss", "url", sourceURL)
+			slog.Debug("article cache miss", "host", source.Host, "path", source.Path)
 		}
 	}
 
-	if !cached {
-		var err error
+	// fresh reports the origin status of an uncached fetch. Only a 2xx body
+	// is cached or advertised as cacheable: an error page must not linger
+	// for an hour in the server cache or in a browser.
+	fresh := http.StatusOK
 
-		title, paragraphs, err = a.scraper.Extract(r.Context(), sourceURL, config)
+	if !cached {
+		var (
+			err    error
+			status int
+		)
+
+		title, paragraphs, status, err = a.scraper.Extract(r.Context(), sourceURL, config)
 		if err != nil {
 			if scrape.IsTimeout(err) {
 				return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
@@ -334,12 +368,16 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 			return nil
 		}
 
-		if a.articleCache != nil {
+		fresh = status
+
+		if fresh >= 200 && fresh < 300 && a.articleCache != nil {
 			a.articleCache.Set(sourceURL, Article{Title: title, Paragraphs: paragraphs})
 		}
 	}
 
-	w.Header().Set("Cache-Control", articleCacheControl)
+	if fresh >= 200 && fresh < 300 {
+		w.Header().Set("Cache-Control", cacheControl(lifetime))
+	}
 
 	props := templates.ArticleProps{
 		Title:      title,

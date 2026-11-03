@@ -49,8 +49,12 @@ Railway, Heroku, and Render set `PORT` for you; the server picks it up automatic
 
 Parsed feeds are cached in memory for 5 minutes and scraped articles for
 1 hour, keyed by URL. Successful `/feed` and `/article` responses also send
-`Cache-Control` (`max-age=300` and `max-age=3600` respectively) so browsers
-reuse them. Failures are never cached.
+`Cache-Control` so browsers reuse them, with `max-age` derived from the
+entry's remaining lifetime (never more than the TTL). Non-2xx origin bodies
+still render but are neither cached nor advertised as cacheable. The article
+cache is capped at 1000 entries, evicting expired then soonest-expiring
+first, since article URLs are caller-controlled; feed URLs come from the
+closed configured list. Failures are never cached.
 
 ## Development
 

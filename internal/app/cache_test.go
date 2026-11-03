@@ -1,6 +1,8 @@
 package app_test
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -9,6 +11,7 @@ import (
 	"github.com/slandath/news/internal/app"
 	"github.com/slandath/news/internal/cache"
 	"github.com/slandath/news/internal/feeds"
+	"github.com/slandath/news/internal/fixtures"
 	"github.com/slandath/news/internal/rss"
 	"github.com/slandath/news/internal/scrape"
 )
@@ -82,5 +85,47 @@ func TestArticleSecondRequestHitsCache(t *testing.T) {
 
 	if first.Body.String() != second.Body.String() {
 		t.Error("cached article body differs from the original")
+	}
+}
+
+// A non-2xx origin body still renders — that behavior is unchanged — but it
+// is neither cached nor advertised as cacheable.
+func TestArticleNon2xxBodyIsNotCached(t *testing.T) {
+	body, err := fixtures.Read(fixtures.Articles["pcgamer.com"].File)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	transport := &stubTransport{handle: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusServiceUnavailable,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(bytes.NewReader(body)),
+			Request:    req,
+		}, nil
+	}}
+	handler := newCachedTestHandler(t, transport)
+	target := "/article?url=" + url.QueryEscape("https://www.pcgamer.com/story")
+
+	first := do(t, handler, target)
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, want %d", first.Code, http.StatusOK)
+	}
+
+	second := do(t, handler, target)
+	if second.Code != http.StatusOK {
+		t.Fatalf("second status = %d, want %d", second.Code, http.StatusOK)
+	}
+
+	if len(transport.requests) != 2 {
+		t.Errorf("made %d outbound requests, want 2 (error pages must not cache)", len(transport.requests))
+	}
+
+	if got := second.Header().Get("Cache-Control"); got != "" {
+		t.Errorf("Cache-Control = %q, want empty for a non-2xx origin", got)
+	}
+
+	if !bytes.Contains(second.Body.Bytes(), []byte(fixtures.Articles["pcgamer.com"].Title)) {
+		t.Error("error-page body was not rendered, want rendering preserved")
 	}
 }
