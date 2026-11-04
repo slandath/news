@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -59,14 +60,32 @@ func run() error {
 	transport.Proxy = nil
 	transport.DialContext = scrape.DialPublicIP
 
+	// User-added feeds persist in a JSON file so they survive restarts. A
+	// corrupt file fails startup loudly rather than silently dropping feeds.
+	storePath := os.Getenv("FEEDS_FILE")
+	if storePath == "" {
+		storePath = "user-feeds.json"
+	}
+
+	userFeeds, err := feeds.LoadUserFeeds(storePath)
+	if err != nil {
+		return fmt.Errorf("load user feeds: %w", err)
+	}
+
+	allFeeds := make([]feeds.Feed, 0, len(feeds.All)+len(userFeeds))
+	allFeeds = append(allFeeds, feeds.All...)
+	allFeeds = append(allFeeds, userFeeds...)
+
 	handler := app.New(app.Deps{
-		Feeds:        feeds.All,
-		Configs:      scrape.Configs,
-		Parser:       rss.New(),
-		Scraper:      scrape.New(&http.Client{Timeout: articleTimeout, Transport: transport}),
-		Favicon:      favicon,
-		FeedCache:    cache.New[*gofeed.Feed](app.FeedCacheTTL),
-		ArticleCache: articleCache,
+		Feeds:         allFeeds,
+		UserFeeds:     userFeeds,
+		Configs:       scrape.Configs,
+		Parser:        rss.New(),
+		Scraper:       scrape.New(&http.Client{Timeout: articleTimeout, Transport: transport}),
+		Favicon:       favicon,
+		FeedCache:     cache.New[*gofeed.Feed](app.FeedCacheTTL),
+		ArticleCache:  articleCache,
+		FeedStorePath: storePath,
 	})
 
 	srv := &http.Server{
