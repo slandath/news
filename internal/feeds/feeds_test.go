@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func TestAllHasTheEightExpectedFeeds(t *testing.T) {
-	if got, want := len(All), 8; got != want {
+func TestAllHasTheExpectedFeeds(t *testing.T) {
+	if got, want := len(All), 13; got != want {
 		t.Fatalf("len(All) = %d, want %d", got, want)
 	}
 }
@@ -25,6 +25,11 @@ func TestAllIsInDisplayOrder(t *testing.T) {
 		"NBC News",
 		"PC Gamer",
 		"TMZ",
+		"NBA",
+		"NFL",
+		"Tennis",
+		"Boxing",
+		"F1",
 	}
 
 	got := make([]string, len(All))
@@ -39,6 +44,34 @@ func TestAllIsInDisplayOrder(t *testing.T) {
 
 // /feed falls back to All[0] when the url parameter is empty or missing, so
 // the default feed changing silently would be a user-visible regression.
+// News feeds render before Sports feeds, each group in display order, and
+// every feed belongs to a known section.
+func TestAllSectionsGroupNewsBeforeSports(t *testing.T) {
+	news, sports := 0, 0
+
+	for _, feed := range All {
+		switch feed.Section {
+		case SectionNews:
+			if sports > 0 {
+				t.Errorf("%q is a news feed after sports feeds, want all news first", feed.Title)
+			}
+			news++
+		case SectionSports:
+			sports++
+		default:
+			t.Errorf("%q has unknown section %q", feed.Title, feed.Section)
+		}
+	}
+
+	if news != 8 {
+		t.Errorf("news feeds = %d, want 8", news)
+	}
+
+	if sports != 5 {
+		t.Errorf("sports feeds = %d, want 5", sports)
+	}
+}
+
 func TestFirstFeedIsTheDefault(t *testing.T) {
 	if len(All) == 0 {
 		t.Fatal("All is empty, so /feed has no default")

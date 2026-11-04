@@ -15,9 +15,15 @@ type FeedLink struct {
 	Href  string
 }
 
+// FeedSection is one group of feeds on the home page.
+type FeedSection struct {
+	Title string
+	Feeds []FeedLink
+}
+
 // HomeProps is the home page's view model.
 type HomeProps struct {
-	Feeds []FeedLink
+	Sections []FeedSection
 }
 
 // FeedItem is one article row in a feed listing. An empty Href means the feed

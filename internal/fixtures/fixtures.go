@@ -23,6 +23,11 @@ type Article struct {
 
 // Articles maps a hostname (without "www.") to its fixture.
 var Articles = map[string]Article{
+	"bbc.co.uk": {
+		File:       "bbc.html",
+		Title:      "Ocon alert(1)leaves Haas",
+		Paragraphs: []string{"The team confirmed the split alert(1)on Tuesday.", "A reserve driver steps in this weekend."},
+	},
 	"clickondetroit.com": {
 		File:       "clickondetroit.html",
 		Title:      "alert(1)Boy rescues cat",
@@ -32,6 +37,11 @@ var Articles = map[string]Article{
 		File:       "cnbc.html",
 		Title:      "Stocks alert(1)rally on earnings",
 		Paragraphs: []string{"Futures point higher alert(1)at the open.", "Analysts expect a quiet week."},
+	},
+	"espn.com": {
+		File:       "espn.html",
+		Title:      "Lakers alert(1)take the West",
+		Paragraphs: []string{"The stars closed it out alert(1)late.", "The rematch is Friday."},
 	},
 	"nbcnews.com": {
 		File:       "nbcnews.html",

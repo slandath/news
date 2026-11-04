@@ -198,15 +198,23 @@ func (a *App) configuredFeed(feedURL string) (feeds.Feed, bool) {
 }
 
 func (a *App) handleHome(w http.ResponseWriter, r *http.Request) error {
-	links := make([]templates.FeedLink, 0, len(a.feeds))
+	// Sections follow first-seen order in a.feeds, so News renders before
+	// Sports while each group keeps the hardcoded display order.
+	var sections []templates.FeedSection
+
 	for _, feed := range a.feeds {
-		links = append(links, templates.FeedLink{
+		if len(sections) == 0 || sections[len(sections)-1].Title != feed.Section {
+			sections = append(sections, templates.FeedSection{Title: feed.Section})
+		}
+
+		last := &sections[len(sections)-1]
+		last.Feeds = append(last.Feeds, templates.FeedLink{
 			Title: feed.Title,
 			Href:  feedHref(feed.URL),
 		})
 	}
 
-	return writeHTML(r.Context(), w, http.StatusOK, templates.Home(templates.HomeProps{Feeds: links}))
+	return writeHTML(r.Context(), w, http.StatusOK, templates.Home(templates.HomeProps{Sections: sections}))
 }
 
 func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {

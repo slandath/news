@@ -190,9 +190,14 @@ func TestFeedEscapesHostileItemTitles(t *testing.T) {
 }
 
 func homeProps() HomeProps {
-	return HomeProps{Feeds: []FeedLink{
-		{Title: "CNBC & Markets", Href: feedHref("https://example.com/cnbc/rss")},
-		{Title: "Hacker News <script>alert(1)</script>", Href: feedHref("https://news.ycombinator.com/rss")},
+	return HomeProps{Sections: []FeedSection{
+		{Title: "News", Feeds: []FeedLink{
+			{Title: "CNBC & Markets", Href: feedHref("https://example.com/cnbc/rss")},
+			{Title: "Hacker News <script>alert(1)</script>", Href: feedHref("https://news.ycombinator.com/rss")},
+		}},
+		{Title: "Sports", Feeds: []FeedLink{
+			{Title: "F1", Href: feedHref("https://example.com/f1/rss")},
+		}},
 	}}
 }
 
@@ -217,9 +222,18 @@ func TestHomeRendersEveryFeedLink(t *testing.T) {
 		"/",
 		feedHref("https://example.com/cnbc/rss"),
 		feedHref("https://news.ycombinator.com/rss"),
+		feedHref("https://example.com/f1/rss"),
 	}
 	if diff := cmp.Diff(want, navHrefs(body)); diff != "" {
 		t.Errorf("hrefs mismatch (-want +got):\n%s", diff)
+	}
+	for _, heading := range []string{
+		`<h2 class="section-title">News</h2>`,
+		`<h2 class="section-title">Sports</h2>`,
+	} {
+		if !strings.Contains(body, heading) {
+			t.Errorf("home page is missing section heading %q", heading)
+		}
 	}
 	if !strings.Contains(body, "CNBC &amp; Markets") {
 		t.Error("feed title was not escaped")
