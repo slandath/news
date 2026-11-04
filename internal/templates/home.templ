@@ -15,6 +15,7 @@ templ Home(props HomeProps) {
 			@PageHeader("Feeds")
 			<main class="wrap">
 				<h1 class="page-title">News Feeds</h1>
+				<p class="meta"><a href="/add">Add a feed</a></p>
 				for _, section := range props.Sections {
 					<h2 class="section-title">{ section.Title }</h2>
 					<ul class="feed-cards">
