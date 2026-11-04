@@ -273,3 +273,14 @@ func TestTruncateCountsRunes(t *testing.T) {
 		})
 	}
 }
+
+// SiteStyle must set an explicit page background: some pages declare a
+// color-scheme, and dark text without a background is unreadable when the
+// browser paints a dark canvas.
+func TestSiteStyleSetsPageBackground(t *testing.T) {
+	body := render(t, SiteStyle())
+
+	if !strings.Contains(body, "background: #fff;") {
+		t.Error("shared style is missing an explicit page background")
+	}
+}
