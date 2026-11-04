@@ -1,11 +1,17 @@
 package rss
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/slandath/news/internal/useragent"
 )
 
 // Parses the hostile-payload fixture with the production parser, offline.
@@ -55,5 +61,46 @@ func TestParseFixtureFeed(t *testing.T) {
 	}
 	if second.Description != "" {
 		t.Errorf("description = %q, want empty for an item without one", second.Description)
+	}
+}
+
+// captureTransport stands in for http.DefaultTransport so the test observes
+// the exact request the production client sends, without any network.
+type captureTransport struct {
+	gotUA string
+	body  []byte
+}
+
+func (c *captureTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.gotUA = req.Header.Get("User-Agent")
+
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(bytes.NewReader(c.body)),
+		Request:    req,
+	}, nil
+}
+
+// Outlets see the app's User-Agent on feed fetches, not Go's default. The
+// swap is restored before the test ends; package tests run sequentially.
+func TestNewSendsUserAgent(t *testing.T) {
+	feedBody, err := os.ReadFile(filepath.Join("..", "..", "testdata", "fixture.rss"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	capture := &captureTransport{body: feedBody}
+	previous := http.DefaultTransport
+	http.DefaultTransport = capture
+
+	t.Cleanup(func() { http.DefaultTransport = previous })
+
+	if _, err := New().ParseURLWithContext("http://example.com/feed", context.Background()); err != nil {
+		t.Fatalf("parse fixture: %v", err)
+	}
+
+	if capture.gotUA != useragent.UserAgent {
+		t.Errorf("User-Agent = %q, want %q", capture.gotUA, useragent.UserAgent)
 	}
 }

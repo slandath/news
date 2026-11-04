@@ -45,6 +45,17 @@ Railway, Heroku, and Render set `PORT` for you; the server picks it up automatic
 - `GET /health` - Health check for the deploy platform
 - `GET /favicon.ico` - Favicon, embedded in the binary
 
+## Caching
+
+Parsed feeds are cached in memory for 5 minutes and scraped articles for
+1 hour, keyed by URL. Successful `/feed` and `/article` responses also send
+`Cache-Control` so browsers reuse them, with `max-age` derived from the
+entry's remaining lifetime (never more than the TTL). Non-2xx origin bodies
+still render but are neither cached nor advertised as cacheable. The article
+cache is capped at 1000 entries, evicting expired then soonest-expiring
+first, since article URLs are caller-controlled; feed URLs come from the
+closed configured list. Failures are never cached.
+
 ## Development
 
 ```bash
@@ -70,6 +81,7 @@ linter versions can surface findings.
 - `main.go` - Server entrypoint: reads `PORT`, wires routes, graceful shutdown
 - `generate.go` - `go generate ./...` drives the templ CLI
 - `internal/app` - Routes, handlers, logging, panic recovery, error rendering
+- `internal/cache` - Generic in-memory TTL cache backing feeds and articles
 - `internal/rss` - Feed fetching and parsing ([gofeed](https://github.com/mmcdole/gofeed))
 - `internal/scrape` - Article extraction ([goquery](https://github.com/PuerkitoBio/goquery)) and per-site selectors
 - `internal/feeds` - The hardcoded feed list in display order
