@@ -1,0 +1,37 @@
+package templates
+
+// SiteStyle is the small shared layer on top of Pure CSS: page type, the
+// banner, content widths, list rows, and breadcrumb separators. Pure ships
+// no theme, so this stays flat and restrained on purpose.
+templ SiteStyle() {
+	<style>
+		body {
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			color: #222;
+		}
+		a { color: #0b6ecf; }
+		.wrap { max-width: 960px; margin: 0 auto; padding: 0 1em; }
+		.wrap.narrow { max-width: 720px; }
+		.banner { background: #00b89c; padding: 1.5em 0; margin-bottom: 1em; }
+		.banner-title { font-size: 2em; font-weight: 600; margin: 0; color: #fff; }
+		.crumb-nav { padding: 1em 0 0; }
+		.crumb-nav .pure-menu-item + .pure-menu-item::before {
+			content: "/";
+			color: #999;
+			margin-right: 0.1em;
+		}
+		.feed-list { list-style: none; margin: 0; padding: 0; }
+		.feed-item { padding: 0.9em 0; border-bottom: 1px solid #e5e5e5; }
+		.feed-item .pubdate { color: #666; font-size: 0.875em; margin: 0.25em 0 0; }
+		.para { margin: 0 0 1em; line-height: 1.6; }
+		.source-link { font-size: 1.25em; }
+		.truncate {
+			display: inline-block;
+			max-width: 100%;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			vertical-align: bottom;
+		}
+	</style>
+}

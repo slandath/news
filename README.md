@@ -16,7 +16,7 @@ readable feed index and article pages.
 [![templ](https://img.shields.io/badge/templ-0.3.1100-blue?style=for-the-badge)](https://github.com/a-h/templ)
 [![gofeed](https://img.shields.io/badge/gofeed-1.5.0-black?style=for-the-badge)](https://github.com/mmcdole/gofeed)
 [![goquery](https://img.shields.io/badge/goquery-1.13.0-CD853F?style=for-the-badge)](https://github.com/PuerkitoBio/goquery)
-[![Bulma](https://img.shields.io/badge/Bulma-1.0.4-yellow?style=for-the-badge&logo=css&logoColor=white)](https://bulma.io)
+[![Pure CSS](https://img.shields.io/badge/Pure_CSS-3.1.0-0078e7?style=for-the-badge&logo=css&logoColor=white)](https://purecss.io)
 [![golangci-lint](https://img.shields.io/badge/golangci--lint-2.15.0-4b3a8a?style=for-the-badge)](https://golangci-lint.run)
 
 ## Getting Started

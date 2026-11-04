@@ -75,7 +75,7 @@ func TestArticleRendersDocument(t *testing.T) {
 
 	for _, want := range []string{
 		"<!doctype html>",
-		`<p class="py-2">Paragraph with &lt;script&gt;alert(1)&lt;/script&gt; inline</p>`,
+		`<p class="para">Paragraph with &lt;script&gt;alert(1)&lt;/script&gt; inline</p>`,
 		"Plain paragraph",
 		`href="https://example.com/story"`,
 	} {

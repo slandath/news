@@ -8,22 +8,25 @@ templ Error(props ErrorProps) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta name="color-scheme" content="light dark"/>
 			<title>Error</title>
-			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			@SiteStyle()
 		</head>
-		<body class="container">
-			<header role="banner">
-				<nav aria-label="breadcrumb" role="navigation">
-					<ul>
-						<li><a href="/">Home</a></li>
-					</ul>
-				</nav>
-			</header>
-			<main role="main">
-				<section>
-					<h1>{ props.Title }</h1>
-					<p>{ props.Message }</p>
-				</section>
-			</main>
+		<body>
+			<div class="wrap">
+				<header role="banner">
+					<nav class="pure-menu pure-menu-horizontal crumb-nav" aria-label="breadcrumb" role="navigation">
+						<ul class="pure-menu-list">
+							<li class="pure-menu-item"><a class="pure-menu-link" href="/">Home</a></li>
+						</ul>
+					</nav>
+				</header>
+				<main role="main">
+					<section>
+						<h1>{ props.Title }</h1>
+						<p class="para">{ props.Message }</p>
+					</section>
+				</main>
+			</div>
 		</body>
 	</html>
 }
