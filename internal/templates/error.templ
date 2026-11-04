@@ -9,21 +9,17 @@ templ Error(props ErrorProps) {
 			<meta name="color-scheme" content="light"/>
 			<title>Error</title>
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/grids-responsive-min.css"/>
 			@SiteStyle()
 		</head>
 		<body>
+			@PageHeader("Error")
 			<div class="wrap">
-				<header role="banner">
-					<nav class="pure-menu pure-menu-horizontal crumb-nav" aria-label="breadcrumb" role="navigation">
-						<ul class="pure-menu-list">
-							<li class="pure-menu-item"><a class="pure-menu-link" href="/">Home</a></li>
-						</ul>
-					</nav>
-				</header>
 				<main role="main">
-					<section>
+					<section class="error-card">
 						<h1>{ props.Title }</h1>
 						<p class="para">{ props.Message }</p>
+						<p><a class="pure-button pure-button-primary" href="/">Back to feeds</a></p>
 					</section>
 				</main>
 			</div>

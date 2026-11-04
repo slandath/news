@@ -8,35 +8,27 @@ templ Feed(props FeedProps) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ props.Title }</title>
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/grids-responsive-min.css"/>
 			@SiteStyle()
 		</head>
 		<body>
-			<div class="wrap">
-				<header>
-					<nav class="pure-menu pure-menu-horizontal crumb-nav" aria-label="breadcrumbs">
-						<ul class="pure-menu-list">
-							<li class="pure-menu-item"><a class="pure-menu-link" href="/">Home</a></li>
-							<li class="pure-menu-item pure-menu-selected"><a class="pure-menu-link truncate" href="#" aria-current="page">{ props.Title }</a></li>
-						</ul>
-					</nav>
-				</header>
-			</div>
-			<section class="banner">
-				<div class="wrap">
-					<p class="banner-title">{ props.Title }</p>
-				</div>
-			</section>
+			@PageHeader(props.Title)
 			<main class="wrap">
+				<h1 class="page-title">{ props.Title }</h1>
 				<section id="content">
 					<ul class="feed-list">
 						for _, item := range props.Items {
-							<li class="feed-item">
-								if item.Href != "" {
-									<a href={ item.Href }>{ item.Title }</a>
-								} else {
-									{ item.Title }
-								}
-								<p class="pubdate">{ item.Published }</p>
+							<li class="feed-item pure-g">
+								<div class="pure-u-1 pure-u-md-3-4">
+									if item.Href != "" {
+										<a href={ item.Href }>{ item.Title }</a>
+									} else {
+										{ item.Title }
+									}
+								</div>
+								<div class="pure-u-1 pure-u-md-1-4 date-col">
+									<p class="pubdate">{ item.Published }</p>
+								</div>
 							</li>
 						}
 					</ul>
