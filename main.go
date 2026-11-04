@@ -51,9 +51,12 @@ func run() error {
 	articleCache.SetMaxEntries(app.ArticleCacheMaxEntries)
 
 	// Article URLs are user-controlled, so the scraper dials only public
-	// IPs (see scrape.DialPublicIP). Cloning keeps the default proxy and
-	// connection-pool settings.
+	// IPs (see scrape.DialPublicIP). Cloning keeps the default
+	// connection-pool settings, but the environment proxy is disabled: with
+	// a proxy set, DialPublicIP would check the proxy's address instead of
+	// the article host, silently bypassing the guard.
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
 	transport.DialContext = scrape.DialPublicIP
 
 	handler := app.New(app.Deps{

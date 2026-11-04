@@ -15,6 +15,10 @@ import (
 // keeps working. That re-resolution leaves a narrow DNS-rebinding window,
 // accepted here because this reader fetches news outlets, not
 // attacker-controlled DNS.
+//
+// DialPublicIP must see the article host itself: callers must dial origins
+// directly and never route the scraper through a proxy, or the check would
+// vet the proxy's address while the private destination goes unchecked.
 func DialPublicIP(ctx context.Context, network, address string) (net.Conn, error) {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
