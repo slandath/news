@@ -58,9 +58,12 @@ func TestExtractReadsArticle(t *testing.T) {
 				return okResponse(req, bytes.NewReader(body)), nil
 			})}
 
-			title, paragraphs, err := New(client).Extract(context.Background(), "https://www."+domain+"/story", cfg)
+			title, paragraphs, status, err := New(client).Extract(context.Background(), "https://www."+domain+"/story", cfg)
 			if err != nil {
 				t.Fatalf("Extract: %v", err)
+			}
+			if status != http.StatusOK {
+				t.Errorf("status = %d, want %d", status, http.StatusOK)
 			}
 			if got, want := method, http.MethodGet; got != want {
 				t.Errorf("method = %q, want %q", got, want)
@@ -97,9 +100,13 @@ func TestExtractRejectsErrorStatus(t *testing.T) {
 		return resp, nil
 	})}
 
-	title, paragraphs, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	title, paragraphs, status, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if err == nil {
 		t.Fatal("Extract accepted a 404 body, want an error")
+	}
+
+	if status != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", status, http.StatusNotFound)
 	}
 
 	if title != "" || len(paragraphs) != 0 {
@@ -108,7 +115,7 @@ func TestExtractRejectsErrorStatus(t *testing.T) {
 }
 
 func TestExtractRejectsMalformedURL(t *testing.T) {
-	_, _, err := New(&http.Client{}).Extract(context.Background(), "://bad", Configs["cnbc.com"])
+	_, _, _, err := New(&http.Client{}).Extract(context.Background(), "://bad", Configs["cnbc.com"])
 	if err == nil {
 		t.Fatal("Extract accepted a URL with no scheme")
 	}
@@ -120,7 +127,7 @@ func TestExtractWrapsReadError(t *testing.T) {
 		return okResponse(req, errorReader{sentinel}), nil
 	})}
 
-	_, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	_, _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("err = %v, want it to wrap %v", err, sentinel)
 	}
@@ -136,7 +143,7 @@ func TestExtractWrapsTransportError(t *testing.T) {
 		return nil, sentinel
 	})}
 
-	_, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	_, _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("err = %v, want it to wrap %v", err, sentinel)
 	}
@@ -152,7 +159,7 @@ func TestExtractPropagatesCancellation(t *testing.T) {
 		return nil, req.Context().Err()
 	})}
 
-	_, _, err := New(client).Extract(ctx, "https://www.cnbc.com/story", Configs["cnbc.com"])
+	_, _, _, err := New(client).Extract(ctx, "https://www.cnbc.com/story", Configs["cnbc.com"])
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}
@@ -177,7 +184,7 @@ func TestExtractCapsResponseBody(t *testing.T) {
 		return okResponse(req, body), nil
 	})}
 
-	if _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"]); err != nil {
+	if _, _, _, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"]); err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
 
