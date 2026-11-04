@@ -50,11 +50,17 @@ func run() error {
 	articleCache := cache.New[app.Article](app.ArticleCacheTTL)
 	articleCache.SetMaxEntries(app.ArticleCacheMaxEntries)
 
+	// Article URLs are user-controlled, so the scraper dials only public
+	// IPs (see scrape.DialPublicIP). Cloning keeps the default proxy and
+	// connection-pool settings.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = scrape.DialPublicIP
+
 	handler := app.New(app.Deps{
 		Feeds:        feeds.All,
 		Configs:      scrape.Configs,
 		Parser:       rss.New(),
-		Scraper:      scrape.New(&http.Client{Timeout: articleTimeout}),
+		Scraper:      scrape.New(&http.Client{Timeout: articleTimeout, Transport: transport}),
 		Favicon:      favicon,
 		FeedCache:    cache.New[*gofeed.Feed](app.FeedCacheTTL),
 		ArticleCache: articleCache,
