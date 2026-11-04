@@ -220,6 +220,7 @@ func TestHomeRendersEveryFeedLink(t *testing.T) {
 
 	want := []string{
 		"/",
+		"/add",
 		feedHref("https://example.com/cnbc/rss"),
 		feedHref("https://news.ycombinator.com/rss"),
 		feedHref("https://example.com/f1/rss"),

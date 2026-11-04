@@ -1,0 +1,36 @@
+package templates
+
+templ Add(props AddForm) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Add a feed</title>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/grids-responsive-min.css"/>
+			@SiteStyle()
+		</head>
+		<body>
+			@PageHeader("Add a feed")
+			<main class="wrap narrow">
+				<article class="article">
+					<h1>Add a feed</h1>
+					if props.Error != "" {
+						<p class="form-error" role="alert">{ props.Error }</p>
+					}
+					<form class="pure-form pure-form-stacked" method="post" action="/add">
+						<label for="url">Feed URL</label>
+						<input id="url" name="url" type="url" required placeholder="https://example.com/feed" value={ props.URL }/>
+						<label for="section">Section</label>
+						<select id="section" name="section">
+							<option value="News" selected?={ props.Section == "" || props.Section == "News" }>News</option>
+							<option value="Sports" selected?={ props.Section == "Sports" }>Sports</option>
+						</select>
+						<button type="submit" class="pure-button pure-button-primary">Add feed</button>
+					</form>
+				</article>
+			</main>
+		</body>
+	</html>
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/slandath/news/internal/feeds"
 	"github.com/slandath/news/internal/rss"
 	"github.com/slandath/news/internal/scrape"
+	"github.com/slandath/news/internal/ssrf"
 )
 
 //go:embed favicon.ico
@@ -50,23 +52,48 @@ func run() error {
 	articleCache := cache.New[app.Article](app.ArticleCacheTTL)
 	articleCache.SetMaxEntries(app.ArticleCacheMaxEntries)
 
-	// Article URLs are user-controlled, so the scraper dials only public
-	// IPs (see scrape.DialPublicIP). Cloning keeps the default
-	// connection-pool settings, but the environment proxy is disabled: with
-	// a proxy set, DialPublicIP would check the proxy's address instead of
-	// the article host, silently bypassing the guard.
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	transport.DialContext = scrape.DialPublicIP
+	// Every outbound fetch goes through http.DefaultTransport: feed
+	// parsing, article scraping, and the add-feed validation fetch. URLs
+	// ultimately come from users, so install the SSRF guard process-wide:
+	// with the stock transport a submitted URL could reach loopback, LAN,
+	// or link-local addresses, and with a proxy set the guard would vet
+	// the proxy instead of the real destination. There is deliberately no
+	// proxy support for server-side fetches; a deployment that needs one
+	// is an explicit future change, not silent breakage.
+	guarded := http.DefaultTransport.(*http.Transport).Clone()
+	guarded.Proxy = nil
+	guarded.DialContext = ssrf.DialPublicIP
+	http.DefaultTransport = guarded
+
+	// User-added feeds persist in a JSON file so they survive restarts. A
+	// corrupt file fails startup loudly rather than silently dropping feeds.
+	storePath := os.Getenv("FEEDS_FILE")
+	if storePath == "" {
+		storePath = "user-feeds.json"
+	}
+
+	userFeeds, err := feeds.LoadUserFeeds(storePath)
+	if err != nil {
+		return fmt.Errorf("load user feeds: %w", err)
+	}
+
+	allFeeds := make([]feeds.Feed, 0, len(feeds.All)+len(userFeeds))
+	allFeeds = append(allFeeds, feeds.All...)
+	allFeeds = append(allFeeds, userFeeds...)
+
+	feedCache := cache.New[*gofeed.Feed](app.FeedCacheTTL)
+	feedCache.SetMaxEntries(app.FeedCacheMaxEntries)
 
 	handler := app.New(app.Deps{
-		Feeds:        feeds.All,
-		Configs:      scrape.Configs,
-		Parser:       rss.New(),
-		Scraper:      scrape.New(&http.Client{Timeout: articleTimeout, Transport: transport}),
-		Favicon:      favicon,
-		FeedCache:    cache.New[*gofeed.Feed](app.FeedCacheTTL),
-		ArticleCache: articleCache,
+		Feeds:         allFeeds,
+		UserFeeds:     userFeeds,
+		Configs:       scrape.Configs,
+		Parser:        rss.New(),
+		Scraper:       scrape.New(&http.Client{Timeout: articleTimeout}),
+		Favicon:       favicon,
+		FeedCache:     feedCache,
+		ArticleCache:  articleCache,
+		FeedStorePath: storePath,
 	})
 
 	srv := &http.Server{

@@ -38,8 +38,10 @@ func New() *gofeed.Parser {
 	parser.MaxByteSize = maxFeedBytes
 
 	// gofeed's ParseURLWithContext uses http.DefaultClient when Client is
-	// nil. Hand it an explicit client so the timeout applies and outlets see
-	// the app's User-Agent; tests replace this field with a stub transport.
+	// nil. Hand it an explicit client so the timeout applies and outlets
+	// see the app's User-Agent; main installs DialPublicIP on
+	// http.DefaultTransport separately so only public IPs are dialed.
+	// Tests replace this field with a stub transport.
 	parser.Client = &http.Client{Timeout: feedTimeout, Transport: useragent.Transport(nil)}
 
 	return parser

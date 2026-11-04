@@ -57,6 +57,7 @@ The HTTP behaviors are deliberately mixed; don't "unify" them:
 | unconfigured article domain | 302     | `Location: <source URL>`                     |
 | panic                       | 500     | full error page, "Internal Server Error"     |
 | unknown path                | 404     | full error page, "Not Found"                 |
+| invalid add-feed submit     | 400     | re-rendered form with message                |
 
 Rules behind the table:
 

@@ -21,6 +21,14 @@ type FeedSection struct {
 	Feeds []FeedLink
 }
 
+// AddForm is the add-feed form's view model. Error is empty on first render;
+// URL and Section carry the submitted values back on a validation failure.
+type AddForm struct {
+	Error   string
+	URL     string
+	Section string
+}
+
 // HomeProps is the home page's view model.
 type HomeProps struct {
 	Sections []FeedSection

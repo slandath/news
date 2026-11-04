@@ -34,6 +34,7 @@ Visit `http://localhost:3000` to browse RSS feeds.
 Available environment variables:
 
 - `PORT` - Server port (default: `3000`), see `.env.example`
+- `FEEDS_FILE` - JSON file persisting user-added feeds (default: `user-feeds.json`), see `.env.example`
 
 Railway, Heroku, and Render set `PORT` for you; the server picks it up automatically.
 
@@ -42,6 +43,8 @@ Railway, Heroku, and Render set `PORT` for you; the server picks it up automatic
 - `GET /` - Home page listing all feeds
 - `GET /feed?url=<RSS_URL>` - Items for a feed (empty or missing `url` falls back to the first configured feed; only configured feed URLs are fetchable, anything else gets a 400)
 - `GET /article?url=<ARTICLE_URL>` - Extracted text for an article; unconfigured outlets redirect to the source URL
+- `GET /add` - Form for adding a feed (single URL field, optional section)
+- `POST /add` - Validates, fetches, and saves the feed; redirects to it on success
 - `GET /health` - Health check for the deploy platform
 - `GET /favicon.ico` - Favicon, embedded in the binary
 
@@ -52,9 +55,9 @@ Parsed feeds are cached in memory for 5 minutes and scraped articles for
 `Cache-Control` so browsers reuse them, with `max-age` derived from the
 entry's remaining lifetime (never more than the TTL). Non-2xx origin bodies
 still render but are neither cached nor advertised as cacheable. The article
-cache is capped at 1000 entries, evicting expired then soonest-expiring
-first, since article URLs are caller-controlled; feed URLs come from the
-closed configured list. Failures are never cached.
+cache is capped at 1000 entries and the feed cache at 100, evicting expired
+then soonest-expiring first; feed keys are the configured list plus feeds
+accepted through `POST /add`. Failures are never cached.
 
 ## Development
 
