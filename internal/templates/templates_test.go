@@ -75,7 +75,7 @@ func TestArticleRendersDocument(t *testing.T) {
 
 	for _, want := range []string{
 		"<!doctype html>",
-		`<p class="py-2">Paragraph with &lt;script&gt;alert(1)&lt;/script&gt; inline</p>`,
+		`<p class="para">Paragraph with &lt;script&gt;alert(1)&lt;/script&gt; inline</p>`,
 		"Plain paragraph",
 		`href="https://example.com/story"`,
 	} {
@@ -271,5 +271,16 @@ func TestTruncateCountsRunes(t *testing.T) {
 				t.Errorf("truncate produced invalid UTF-8: %q", got)
 			}
 		})
+	}
+}
+
+// SiteStyle must set an explicit page background: some pages declare a
+// color-scheme, and dark text without a background is unreadable when the
+// browser paints a dark canvas.
+func TestSiteStyleSetsPageBackground(t *testing.T) {
+	body := render(t, SiteStyle())
+
+	if !strings.Contains(body, "background: #fff;") {
+		t.Error("shared style is missing an explicit page background")
 	}
 }
