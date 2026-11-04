@@ -8,34 +8,21 @@ templ Home(props HomeProps) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Tom's News</title>
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/grids-responsive-min.css"/>
 			@SiteStyle()
 		</head>
 		<body>
-			<div class="wrap">
-				<header>
-					<nav class="pure-menu pure-menu-horizontal crumb-nav" aria-label="breadcrumbs">
-						<ul class="pure-menu-list">
-							<li class="pure-menu-item pure-menu-selected"><a class="pure-menu-link" href="/" aria-current="page">Home</a></li>
-						</ul>
-					</nav>
-				</header>
-			</div>
-			<section class="banner">
-				<div class="wrap">
-					<p class="banner-title">News Feeds</p>
-				</div>
-			</section>
-			<div class="wrap">
-				<ul class="feed-list">
-					for _, feed := range props.Feeds {
-						<li class="feed-item">
-							<a href={ feed.Href }>
-								{ feed.Title }
-							</a>
-						</li>
-					}
-				</ul>
-			</div>
+			@PageHeader("Feeds")
+			<main class="wrap">
+				<h1 class="page-title">News Feeds</h1>
+				for _, feed := range props.Feeds {
+					<div class="feed-card">
+						<a href={ feed.Href }>
+							{ feed.Title }
+						</a>
+					</div>
+				}
+			</main>
 		</body>
 	</html>
 }
