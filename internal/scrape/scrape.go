@@ -34,9 +34,10 @@ func New(client *http.Client) *Scraper {
 // Extract fetches rawURL and returns the page title and body paragraphs
 // selected by cfg. Both are plain text, never markup.
 //
-// The HTTP status is deliberately not checked. The TypeScript version parsed
-// whatever body came back, error pages included, and changing that would turn
-// some currently-rendered pages into redirects.
+// An origin error status (>= 400) is a fetch failure like any other: the
+// body is not parsed, and the caller falls back to redirecting at the
+// source. Error pages whose markup happens to match the selectors must not
+// render as if they were the article.
 func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (title string, paragraphs []string, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
@@ -53,6 +54,10 @@ func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (t
 	}
 	// The body is read to EOF below, so a close error cannot affect the result.
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 {
+		return "", nil, fmt.Errorf("fetch article: unexpected status %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxArticleBytes))
 	if err != nil {

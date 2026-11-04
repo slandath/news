@@ -82,6 +82,31 @@ func TestExtractReadsArticle(t *testing.T) {
 	}
 }
 
+// An origin error page is a fetch failure: the body is not parsed, so its
+// markup can never render as if it were the article.
+func TestExtractRejectsErrorStatus(t *testing.T) {
+	body, err := fixtures.Read(fixtures.Articles["cnbc.com"].File)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		resp := okResponse(req, bytes.NewReader(body))
+		resp.StatusCode = http.StatusNotFound
+
+		return resp, nil
+	})}
+
+	title, paragraphs, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	if err == nil {
+		t.Fatal("Extract accepted a 404 body, want an error")
+	}
+
+	if title != "" || len(paragraphs) != 0 {
+		t.Errorf("Extract = (%q, %d paragraphs), want empty results on error status", title, len(paragraphs))
+	}
+}
+
 func TestExtractRejectsMalformedURL(t *testing.T) {
 	_, _, err := New(&http.Client{}).Extract(context.Background(), "://bad", Configs["cnbc.com"])
 	if err == nil {
