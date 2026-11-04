@@ -75,7 +75,7 @@ func TestArticleRendersDocument(t *testing.T) {
 
 	for _, want := range []string{
 		"<!doctype html>",
-		`<p class="py-2">Paragraph with &lt;script&gt;alert(1)&lt;/script&gt; inline</p>`,
+		`<p class="para">Paragraph with &lt;script&gt;alert(1)&lt;/script&gt; inline</p>`,
 		"Plain paragraph",
 		`href="https://example.com/story"`,
 	} {
@@ -96,29 +96,26 @@ func TestArticleEscapesTitle(t *testing.T) {
 	}
 }
 
-func TestArticleTruncatesBreadcrumbAndHeroTitle(t *testing.T) {
+func TestArticleTruncatesTitle(t *testing.T) {
 	longTitle := strings.Repeat("VeryLongWord", 6) + " <script>alert(1)</script>"
 
 	props := articleProps()
 	props.Title = longTitle
 	body := render(t, Article(props))
 
-	// Breadcrumb truncates at 30 runes, hero at 60.
-	if want := truncate(longTitle, 30) + "</a>"; !strings.Contains(body, want) {
-		t.Errorf("breadcrumb is missing %q", want)
-	}
-	if want := truncate(longTitle, 60) + "</p>"; !strings.Contains(body, want) {
-		t.Errorf("hero title is missing %q", want)
+	// The card title truncates at 60 runes.
+	if want := truncate(longTitle, 60) + "</h1>"; !strings.Contains(body, want) {
+		t.Errorf("article title is missing %q", want)
 	}
 }
 
-func TestArticleOmitsFeedBreadcrumbWithoutFeed(t *testing.T) {
+func TestArticleOmitsFeedLinkWithoutFeed(t *testing.T) {
 	props := articleProps()
 	props.FeedTitle = ""
 	props.FeedHref = ""
 
 	if body := render(t, Article(props)); strings.Contains(body, "/feed?") {
-		t.Error("article rendered a feed breadcrumb without a feed")
+		t.Error("article rendered a feed link without a feed")
 	}
 }
 
@@ -211,6 +208,16 @@ func TestHomeRendersEveryFeedLink(t *testing.T) {
 		t.Error("page heading is missing")
 	}
 
+	// The header links live in a labeled navigation landmark, and the feeds
+	// render as a list so assistive technology announces the item count.
+	if !strings.Contains(body, `<nav class="wrap pure-menu pure-menu-horizontal topnav" aria-label="Site">`) {
+		t.Error("header is missing the site navigation landmark")
+	}
+
+	if !strings.Contains(body, `<ul class="feed-cards">`) {
+		t.Error("feeds are not rendered as a list")
+	}
+
 	want := []string{
 		"/",
 		feedHref("https://example.com/cnbc/rss"),
@@ -221,8 +228,8 @@ func TestHomeRendersEveryFeedLink(t *testing.T) {
 		t.Errorf("hrefs mismatch (-want +got):\n%s", diff)
 	}
 	for _, heading := range []string{
-		`<h2 class="subtitle">News</h2>`,
-		`<h2 class="subtitle">Sports</h2>`,
+		`<h2 class="section-title">News</h2>`,
+		`<h2 class="section-title">Sports</h2>`,
 	} {
 		if !strings.Contains(body, heading) {
 			t.Errorf("home page is missing section heading %q", heading)
@@ -285,5 +292,16 @@ func TestTruncateCountsRunes(t *testing.T) {
 				t.Errorf("truncate produced invalid UTF-8: %q", got)
 			}
 		})
+	}
+}
+
+// SiteStyle must set an explicit page background: some pages declare a
+// color-scheme, and dark text without a background is unreadable when the
+// browser paints a dark canvas.
+func TestSiteStyleSetsPageBackground(t *testing.T) {
+	body := render(t, SiteStyle())
+
+	if !strings.Contains(body, "background: #e9edf1;") {
+		t.Error("shared style is missing an explicit page background")
 	}
 }

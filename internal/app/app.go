@@ -6,45 +6,89 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/mmcdole/gofeed"
+	"github.com/slandath/news/internal/cache"
 	"github.com/slandath/news/internal/feeds"
 	"github.com/slandath/news/internal/rss"
 	"github.com/slandath/news/internal/scrape"
 	"github.com/slandath/news/internal/templates"
 )
 
+// FeedCacheTTL bounds how long a parsed feed is reused: most feeds update
+// every 15-60 minutes, so 5 minutes keeps pages fresh without refetching per
+// visitor. ArticleCacheTTL is longer because published articles rarely change.
+const (
+	FeedCacheTTL    = 5 * time.Minute
+	ArticleCacheTTL = time.Hour
+)
+
+// ArticleCacheMaxEntries bounds the article cache. Article keys are
+// caller-controlled URLs with an open key space, unlike the closed list of
+// feed URLs, so the cap keeps one-off URLs from growing memory without bound.
+const ArticleCacheMaxEntries = 1000
+
+// cacheControl builds a Cache-Control header from a remaining lifetime.
+// Ceiling keeps a just-stored entry advertising exactly its TTL instead of
+// one second less, and a hit near expiry advertising only what is left, so a
+// browser or CDN never holds the response longer than the server would.
+func cacheControl(lifetime time.Duration) string {
+	secs := int(math.Ceil(lifetime.Seconds()))
+	if secs < 0 {
+		secs = 0
+	}
+
+	return "public, max-age=" + strconv.Itoa(secs)
+}
+
+// Article is one scraped article: plain title and body paragraphs, never
+// markup. It is the value type of the article cache.
+type Article struct {
+	Title      string
+	Paragraphs []string
+}
+
 // Deps is everything the handlers need. Nothing is read from package-level
-// state, so tests can build an app with stubs for any subset.
+// state, so tests can build an app with stubs for any subset. A nil
+// FeedCache or ArticleCache disables that cache.
 type Deps struct {
-	Feeds   []feeds.Feed
-	Configs map[string]scrape.SiteConfig
-	Parser  rss.Parser
-	Scraper *scrape.Scraper
-	Favicon []byte
+	Feeds        []feeds.Feed
+	Configs      map[string]scrape.SiteConfig
+	Parser       rss.Parser
+	Scraper      *scrape.Scraper
+	Favicon      []byte
+	FeedCache    *cache.Cache[*gofeed.Feed]
+	ArticleCache *cache.Cache[Article]
 }
 
 // App holds the injected dependencies for the handlers.
 type App struct {
-	feeds   []feeds.Feed
-	configs map[string]scrape.SiteConfig
-	parser  rss.Parser
-	scraper *scrape.Scraper
-	favicon []byte
+	feeds        []feeds.Feed
+	configs      map[string]scrape.SiteConfig
+	parser       rss.Parser
+	scraper      *scrape.Scraper
+	favicon      []byte
+	feedCache    *cache.Cache[*gofeed.Feed]
+	articleCache *cache.Cache[Article]
 }
 
 // New returns the application handler.
 func New(deps Deps) http.Handler {
 	app := &App{
-		feeds:   deps.Feeds,
-		configs: deps.Configs,
-		parser:  deps.Parser,
-		scraper: deps.Scraper,
-		favicon: deps.Favicon,
+		feeds:        deps.Feeds,
+		configs:      deps.Configs,
+		parser:       deps.Parser,
+		scraper:      deps.Scraper,
+		favicon:      deps.Favicon,
+		feedCache:    deps.FeedCache,
+		articleCache: deps.ArticleCache,
 	}
 
 	mux := http.NewServeMux()
@@ -53,6 +97,9 @@ func New(deps Deps) http.Handler {
 	mux.Handle("GET /article", app.wrap(app.handleArticle))
 	mux.Handle("GET /favicon.ico", app.wrap(app.handleFavicon))
 	mux.Handle("GET /health", app.wrap(app.handleHealth))
+	// Unqualified "/" is the least specific pattern, so it only sees what
+	// nothing above matched: every method on every unknown path.
+	mux.Handle("/", app.wrap(app.handleNotFound))
 
 	return mux
 }
@@ -192,10 +239,38 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	feed, err := a.parser.ParseURLWithContext(feedURL, r.Context())
-	if err != nil {
-		return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
+	var feed *gofeed.Feed
+
+	lifetime := FeedCacheTTL
+
+	if a.feedCache != nil {
+		var (
+			remaining time.Duration
+			ok        bool
+		)
+
+		if feed, remaining, ok = a.feedCache.Get(feedURL); ok {
+			slog.Info("feed cache hit", "url", feedURL)
+			lifetime = remaining
+		} else {
+			slog.Debug("feed cache miss", "url", feedURL)
+		}
 	}
+
+	if feed == nil {
+		parsed, err := a.parser.ParseURLWithContext(feedURL, r.Context())
+		if err != nil {
+			return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
+		}
+
+		feed = parsed
+
+		if a.feedCache != nil {
+			a.feedCache.Set(feedURL, feed)
+		}
+	}
+
+	w.Header().Set("Cache-Control", cacheControl(lifetime))
 
 	// A configured feed's own title wins over whatever the feed calls itself,
 	// so the page and the navigation agree.
@@ -257,15 +332,62 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	title, paragraphs, err := a.scraper.Extract(r.Context(), sourceURL, config)
-	if err != nil {
-		if scrape.IsTimeout(err) {
-			return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
+	var (
+		title      string
+		paragraphs []string
+		cached     bool
+	)
+
+	lifetime := ArticleCacheTTL
+
+	if a.articleCache != nil {
+		var (
+			entry     Article
+			remaining time.Duration
+			ok        bool
+		)
+
+		if entry, remaining, ok = a.articleCache.Get(sourceURL); ok {
+			slog.Info("article cache hit", "host", source.Host, "path", source.Path)
+
+			title, paragraphs, cached = entry.Title, entry.Paragraphs, true
+			lifetime = remaining
+		} else {
+			slog.Debug("article cache miss", "host", source.Host, "path", source.Path)
+		}
+	}
+
+	// fresh reports the origin status of an uncached fetch. Only a 2xx body
+	// is cached or advertised as cacheable: an error page must not linger
+	// for an hour in the server cache or in a browser.
+	fresh := http.StatusOK
+
+	if !cached {
+		var (
+			err    error
+			status int
+		)
+
+		title, paragraphs, status, err = a.scraper.Extract(r.Context(), sourceURL, config)
+		if err != nil {
+			if scrape.IsTimeout(err) {
+				return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
+			}
+
+			slog.Error("scrape article", "url", sourceURL, "err", err)
+			redirect(w, sourceURL)
+			return nil
 		}
 
-		slog.Error("scrape article", "url", sourceURL, "err", err)
-		redirect(w, sourceURL)
-		return nil
+		fresh = status
+
+		if fresh >= 200 && fresh < 300 && a.articleCache != nil {
+			a.articleCache.Set(sourceURL, Article{Title: title, Paragraphs: paragraphs})
+		}
+	}
+
+	if fresh >= 200 && fresh < 300 {
+		w.Header().Set("Cache-Control", cacheControl(lifetime))
 	}
 
 	props := templates.ArticleProps{
@@ -287,6 +409,13 @@ func (a *App) handleFavicon(w http.ResponseWriter, r *http.Request) error {
 	http.ServeContent(w, r, "favicon.ico", time.Time{}, bytes.NewReader(a.favicon))
 
 	return nil
+}
+
+func (a *App) handleNotFound(w http.ResponseWriter, r *http.Request) error {
+	return writeHTML(r.Context(), w, http.StatusNotFound, templates.Error(templates.ErrorProps{
+		Title:   "Not Found",
+		Message: "Page not found.",
+	}))
 }
 
 func (a *App) handleHealth(w http.ResponseWriter, _ *http.Request) error {

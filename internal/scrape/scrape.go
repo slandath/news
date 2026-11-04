@@ -10,6 +10,8 @@ import (
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/slandath/news/internal/useragent"
 )
 
 // maxArticleBytes caps how much of an article page is read. Beyond this the
@@ -30,35 +32,46 @@ func New(client *http.Client) *Scraper {
 }
 
 // Extract fetches rawURL and returns the page title and body paragraphs
-// selected by cfg. Both are plain text, never markup.
+// selected by cfg, along with the origin's HTTP status. Both are plain text,
+// never markup. A zero status means no response was received.
 //
-// The HTTP status is deliberately not checked. The TypeScript version parsed
-// whatever body came back, error pages included, and changing that would turn
-// some currently-rendered pages into redirects.
-func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (title string, paragraphs []string, err error) {
+// An origin error status (>= 400) is a fetch failure like any other: the
+// body is not parsed, and the caller falls back to redirecting at the
+// source. Error pages whose markup happens to match the selectors must not
+// render as if they were the article. The status is still reported so
+// callers can decide, for example, whether a result is worth caching.
+func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (title string, paragraphs []string, statusCode int, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return "", nil, fmt.Errorf("build request: %w", err)
+		return "", nil, 0, fmt.Errorf("build request: %w", err)
 	}
+
+	// The scraper keeps its own client, built wherever it is wired, so the
+	// header is set here to guarantee it on every article fetch.
+	req.Header.Set("User-Agent", useragent.UserAgent)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", nil, fmt.Errorf("fetch article: %w", err)
+		return "", nil, 0, fmt.Errorf("fetch article: %w", err)
 	}
 	// The body is read to EOF below, so a close error cannot affect the result.
 	defer func() { _ = resp.Body.Close() }()
 
+	if resp.StatusCode >= 400 {
+		return "", nil, resp.StatusCode, fmt.Errorf("fetch article: unexpected status %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxArticleBytes))
 	if err != nil {
-		return "", nil, fmt.Errorf("read article: %w", err)
+		return "", nil, resp.StatusCode, fmt.Errorf("read article: %w", err)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
-		return "", nil, fmt.Errorf("parse article: %w", err)
+		return "", nil, resp.StatusCode, fmt.Errorf("parse article: %w", err)
 	}
 
-	return doc.Find(cfg.Title).Text(), cfg.ArticleWrapper(doc), nil
+	return doc.Find(cfg.Title).Text(), cfg.ArticleWrapper(doc), resp.StatusCode, nil
 }
 
 // IsTimeout reports whether err means the page did not arrive in time, as

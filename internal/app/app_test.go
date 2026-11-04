@@ -452,6 +452,36 @@ func TestArticleReturns504WhenFetchTimesOut(t *testing.T) {
 	}
 }
 
+// An origin error status redirects to the source instead of rendering the
+// error page's body as if it were the article.
+func TestArticleRedirectsWhenOriginErrors(t *testing.T) {
+	body, err := fixtures.Read(fixtures.Articles["pcgamer.com"].File)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	transport := &stubTransport{handle: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(bytes.NewReader(body)),
+			Request:    req,
+		}, nil
+	}}
+	handler := newTestHandler(t, transport)
+	source := "https://www.pcgamer.com/story"
+
+	rec := do(t, handler, "/article?url="+url.QueryEscape(source))
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+
+	if got := rec.Header().Get("Location"); got != source {
+		t.Errorf("Location = %q, want %q", got, source)
+	}
+}
+
 func TestArticleRedirectsOnFetchError(t *testing.T) {
 	transport := &stubTransport{handle: func(*http.Request) (*http.Response, error) {
 		return nil, errors.New("offline")
@@ -514,5 +544,39 @@ func TestFavicon(t *testing.T) {
 	}
 	if got, want := rec.Body.String(), "icon"; got != want {
 		t.Errorf("body = %q, want %q", got, want)
+	}
+}
+
+func TestUnknownPathRendersNotFound(t *testing.T) {
+	transport := newStubTransport(t)
+	handler := newTestHandler(t, transport)
+
+	for _, target := range []string{"/nope", "/feed/extra", "/article/"} {
+		rec := do(t, handler, target)
+
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want %d", target, rec.Code, http.StatusNotFound)
+		}
+
+		body := rec.Body.String()
+		if !strings.Contains(body, "Not Found") {
+			t.Errorf("GET %s page is missing %q", target, "Not Found")
+		}
+
+		if got, want := rec.Header().Get("Content-Type"), "text/html; charset=utf-8"; got != want {
+			t.Errorf("GET %s Content-Type = %q, want %q", target, got, want)
+		}
+	}
+
+	// The catch-all is method-agnostic: unknown paths 404 however reached.
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/nope", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("POST /nope status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	if len(transport.requests) != 0 {
+		t.Errorf("made %d outbound requests, want none", len(transport.requests))
 	}
 }

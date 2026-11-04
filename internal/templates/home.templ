@@ -7,37 +7,27 @@ templ Home(props HomeProps) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Tom's News</title>
-			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/grids-responsive-min.css"/>
+			@SiteStyle()
 		</head>
 		<body>
-			<div class="section">
-				<header>
-					<nav class="breadcrumb" aria-label="breadcrumbs">
-						<ul>
-							<li class="is-active"><a href="/" aria-current="page">Home</a></li>
-						</ul>
-					</nav>
-				</header>
-			</div>
-			<section class="hero is-small is-primary">
-				<div class="hero-body">
-					<p class="title">News Feeds</p>
-				</div>
-			</section>
-			for _, section := range props.Sections {
-				<section class="section">
-					<h2 class="subtitle">{ section.Title }</h2>
-					<ul>
+			@PageHeader("Feeds")
+			<main class="wrap">
+				<h1 class="page-title">News Feeds</h1>
+				for _, section := range props.Sections {
+					<h2 class="section-title">{ section.Title }</h2>
+					<ul class="feed-cards">
 						for _, feed := range section.Feeds {
-							<li class="py-1">
+							<li class="feed-card">
 								<a href={ feed.Href }>
 									{ feed.Title }
 								</a>
 							</li>
 						}
 					</ul>
-				</section>
-			}
+				}
+			</main>
 		</body>
 	</html>
 }

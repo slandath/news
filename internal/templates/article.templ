@@ -7,38 +7,25 @@ templ Article(props ArticleProps) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ props.Title }</title>
-			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/pure-min.css"/>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.1.0/build/grids-responsive-min.css"/>
+			@SiteStyle()
 		</head>
 		<body>
-			<div class="section">
-				<header>
-					<nav class="breadcrumb" aria-label="breadcrumbs">
-						<ul>
-							<li><a href="/">Home</a></li>
-							if props.FeedHref != "" {
-								<li><a href={ props.FeedHref }>{ props.FeedTitle }</a></li>
-							}
-							<li class="is-active"><a href="#" aria-current="page">{ truncate(props.Title, 30) }</a></li>
-						</ul>
-					</nav>
-				</header>
-			</div>
-			<main>
-				<section class="hero is-small is-primary">
-					<div class="hero-body">
-						<p class="title">{ truncate(props.Title, 60) }</p>
+			@PageHeader("Article")
+			<main class="wrap narrow">
+				<article class="article">
+					<h1>{ truncate(props.Title, 60) }</h1>
+					if props.FeedHref != "" {
+						<p class="meta">From <a href={ props.FeedHref }>{ props.FeedTitle }</a></p>
+					}
+					for _, para := range props.Paragraphs {
+						<p class="para">{ para }</p>
+					}
+					<div class="source-row">
+						<a href={ props.SourceURL } class="pure-button" target="_blank">Source</a>
 					</div>
-				</section>
-				<section class="section">
-					<div class="container">
-						for _, para := range props.Paragraphs {
-							<p class="py-2">{ para }</p>
-						}
-						<div class="pt-4">
-							<a href={ props.SourceURL } class="is-size-5" target="_blank">Source</a>
-						</div>
-					</div>
-				</section>
+				</article>
 			</main>
 		</body>
 	</html>
