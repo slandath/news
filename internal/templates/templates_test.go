@@ -203,6 +203,16 @@ func TestHomeRendersEveryFeedLink(t *testing.T) {
 		t.Error("page heading is missing")
 	}
 
+	// The header links live in a labeled navigation landmark, and the feeds
+	// render as a list so assistive technology announces the item count.
+	if !strings.Contains(body, `<nav class="wrap pure-menu pure-menu-horizontal topnav" aria-label="Site">`) {
+		t.Error("header is missing the site navigation landmark")
+	}
+
+	if !strings.Contains(body, `<ul class="feed-cards">`) {
+		t.Error("feeds are not rendered as a list")
+	}
+
 	want := []string{
 		"/",
 		feedHref("https://example.com/cnbc/rss"),

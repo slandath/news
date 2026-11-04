@@ -29,7 +29,7 @@ func PageHeader(label string) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<header class=\"topbar\"><div class=\"wrap pure-menu pure-menu-horizontal topnav\"><a href=\"/\" class=\"pure-menu-heading pure-menu-link\">Tom's News</a><ul class=\"pure-menu-list\"><li class=\"pure-menu-item pure-menu-selected\"><span class=\"pure-menu-link\" aria-current=\"page\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<header class=\"topbar\"><nav class=\"wrap pure-menu pure-menu-horizontal topnav\" aria-label=\"Site\"><a href=\"/\" class=\"pure-menu-heading pure-menu-link\">Tom's News</a><ul class=\"pure-menu-list\"><li class=\"pure-menu-item pure-menu-selected\"><span class=\"pure-menu-link\" aria-current=\"page\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -42,7 +42,7 @@ func PageHeader(label string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</span></li></ul></div></header>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</span></li></ul></nav></header>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -15,13 +15,15 @@ templ Home(props HomeProps) {
 			@PageHeader("Feeds")
 			<main class="wrap">
 				<h1 class="page-title">News Feeds</h1>
-				for _, feed := range props.Feeds {
-					<div class="feed-card">
-						<a href={ feed.Href }>
-							{ feed.Title }
-						</a>
-					</div>
-				}
+				<ul class="feed-cards">
+					for _, feed := range props.Feeds {
+						<li class="feed-card">
+							<a href={ feed.Href }>
+								{ feed.Title }
+							</a>
+						</li>
+					}
+				</ul>
 			</main>
 		</body>
 	</html>
