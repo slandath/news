@@ -452,6 +452,36 @@ func TestArticleReturns504WhenFetchTimesOut(t *testing.T) {
 	}
 }
 
+// An origin error status redirects to the source instead of rendering the
+// error page's body as if it were the article.
+func TestArticleRedirectsWhenOriginErrors(t *testing.T) {
+	body, err := fixtures.Read(fixtures.Articles["pcgamer.com"].File)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	transport := &stubTransport{handle: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(bytes.NewReader(body)),
+			Request:    req,
+		}, nil
+	}}
+	handler := newTestHandler(t, transport)
+	source := "https://www.pcgamer.com/story"
+
+	rec := do(t, handler, "/article?url="+url.QueryEscape(source))
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+
+	if got := rec.Header().Get("Location"); got != source {
+		t.Errorf("Location = %q, want %q", got, source)
+	}
+}
+
 func TestArticleRedirectsOnFetchError(t *testing.T) {
 	transport := &stubTransport{handle: func(*http.Request) (*http.Response, error) {
 		return nil, errors.New("offline")

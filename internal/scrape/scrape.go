@@ -10,6 +10,8 @@ import (
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/slandath/news/internal/useragent"
 )
 
 // maxArticleBytes caps how much of an article page is read. Beyond this the
@@ -33,16 +35,20 @@ func New(client *http.Client) *Scraper {
 // selected by cfg, along with the origin's HTTP status. Both are plain text,
 // never markup. A zero status means no response was received.
 //
-// The status is reported but deliberately not acted on here. The TypeScript
-// version parsed whatever body came back, error pages included, and changing
-// that would turn some currently-rendered pages into redirects. Callers
-// decide what the status means for them, for example whether a result is
-// worth caching.
+// An origin error status (>= 400) is a fetch failure like any other: the
+// body is not parsed, and the caller falls back to redirecting at the
+// source. Error pages whose markup happens to match the selectors must not
+// render as if they were the article. The status is still reported so
+// callers can decide, for example, whether a result is worth caching.
 func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (title string, paragraphs []string, statusCode int, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", nil, 0, fmt.Errorf("build request: %w", err)
 	}
+
+	// The scraper keeps its own client, built wherever it is wired, so the
+	// header is set here to guarantee it on every article fetch.
+	req.Header.Set("User-Agent", useragent.UserAgent)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -50,6 +56,10 @@ func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (t
 	}
 	// The body is read to EOF below, so a close error cannot affect the result.
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 {
+		return "", nil, resp.StatusCode, fmt.Errorf("fetch article: unexpected status %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxArticleBytes))
 	if err != nil {

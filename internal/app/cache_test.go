@@ -88,17 +88,19 @@ func TestArticleSecondRequestHitsCache(t *testing.T) {
 	}
 }
 
-// A non-2xx origin body still renders — that behavior is unchanged — but it
-// is neither cached nor advertised as cacheable.
+// An origin error redirects instead of rendering, and the failure is never
+// cached: once the origin recovers, the article renders instead of serving
+// a stale error.
 func TestArticleNon2xxBodyIsNotCached(t *testing.T) {
 	body, err := fixtures.Read(fixtures.Articles["pcgamer.com"].File)
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
 
+	status := http.StatusServiceUnavailable
 	transport := &stubTransport{handle: func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
-			StatusCode: http.StatusServiceUnavailable,
+			StatusCode: status,
 			Header:     make(http.Header),
 			Body:       io.NopCloser(bytes.NewReader(body)),
 			Request:    req,
@@ -108,9 +110,15 @@ func TestArticleNon2xxBodyIsNotCached(t *testing.T) {
 	target := "/article?url=" + url.QueryEscape("https://www.pcgamer.com/story")
 
 	first := do(t, handler, target)
-	if first.Code != http.StatusOK {
-		t.Fatalf("first status = %d, want %d", first.Code, http.StatusOK)
+	if first.Code != http.StatusFound {
+		t.Fatalf("first status = %d, want %d", first.Code, http.StatusFound)
 	}
+
+	if got := first.Header().Get("Cache-Control"); got != "" {
+		t.Errorf("Cache-Control = %q, want empty for a non-2xx origin", got)
+	}
+
+	status = http.StatusOK
 
 	second := do(t, handler, target)
 	if second.Code != http.StatusOK {
@@ -118,14 +126,10 @@ func TestArticleNon2xxBodyIsNotCached(t *testing.T) {
 	}
 
 	if len(transport.requests) != 2 {
-		t.Errorf("made %d outbound requests, want 2 (error pages must not cache)", len(transport.requests))
-	}
-
-	if got := second.Header().Get("Cache-Control"); got != "" {
-		t.Errorf("Cache-Control = %q, want empty for a non-2xx origin", got)
+		t.Errorf("made %d outbound requests, want 2 (failures must not cache)", len(transport.requests))
 	}
 
 	if !bytes.Contains(second.Body.Bytes(), []byte(fixtures.Articles["pcgamer.com"].Title)) {
-		t.Error("error-page body was not rendered, want rendering preserved")
+		t.Error("recovered article body is missing, want the fresh fetch rendered")
 	}
 }

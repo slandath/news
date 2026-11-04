@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/slandath/news/internal/fixtures"
+	"github.com/slandath/news/internal/useragent"
 )
 
 // roundTripFunc lets a test stand in for the network, mirroring the TS suite's
@@ -51,6 +52,9 @@ func TestExtractReadsArticle(t *testing.T) {
 				if got, want := req.URL.Hostname(), "www."+domain; got != want {
 					t.Errorf("hostname = %q, want %q", got, want)
 				}
+				if got, want := req.Header.Get("User-Agent"), useragent.UserAgent; got != want {
+					t.Errorf("User-Agent = %q, want %q", got, want)
+				}
 				return okResponse(req, bytes.NewReader(body)), nil
 			})}
 
@@ -78,6 +82,35 @@ func TestExtractReadsArticle(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// An origin error page is a fetch failure: the body is not parsed, so its
+// markup can never render as if it were the article.
+func TestExtractRejectsErrorStatus(t *testing.T) {
+	body, err := fixtures.Read(fixtures.Articles["cnbc.com"].File)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		resp := okResponse(req, bytes.NewReader(body))
+		resp.StatusCode = http.StatusNotFound
+
+		return resp, nil
+	})}
+
+	title, paragraphs, status, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
+	if err == nil {
+		t.Fatal("Extract accepted a 404 body, want an error")
+	}
+
+	if status != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", status, http.StatusNotFound)
+	}
+
+	if title != "" || len(paragraphs) != 0 {
+		t.Errorf("Extract = (%q, %d paragraphs), want empty results on error status", title, len(paragraphs))
 	}
 }
 
@@ -187,35 +220,5 @@ func TestIsTimeout(t *testing.T) {
 				t.Errorf("IsTimeout(%v) = %t, want %t", test.err, got, test.want)
 			}
 		})
-	}
-}
-
-// A non-2xx origin body is still extracted — rendering behavior is unchanged —
-// but its status is reported so callers can decide, for example, not to
-// cache it.
-func TestExtractReportsNonOKStatus(t *testing.T) {
-	body, err := fixtures.Read(fixtures.Articles["cnbc.com"].File)
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-
-	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		resp := okResponse(req, bytes.NewReader(body))
-		resp.StatusCode = http.StatusServiceUnavailable
-
-		return resp, nil
-	})}
-
-	title, paragraphs, status, err := New(client).Extract(context.Background(), "https://www.cnbc.com/story", Configs["cnbc.com"])
-	if err != nil {
-		t.Fatalf("Extract: %v", err)
-	}
-
-	if status != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want %d", status, http.StatusServiceUnavailable)
-	}
-
-	if title == "" || len(paragraphs) == 0 {
-		t.Error("non-2xx body was not extracted, want rendering behavior preserved")
 	}
 }
