@@ -31,6 +31,12 @@ const (
 	ArticleCacheTTL = time.Hour
 )
 
+// FeedCacheMaxEntries bounds the feed cache the way ArticleCacheMaxEntries
+// bounds the article cache. Feed keys are operator- or user-added feed URLs,
+// an open set once the add form exists, so the cap keeps one-off URLs from
+// growing memory without bound.
+const FeedCacheMaxEntries = 100
+
 // ArticleCacheMaxEntries bounds the article cache. Article keys are
 // caller-controlled URLs with an open key space, unlike the closed list of
 // feed URLs, so the cap keeps one-off URLs from growing memory without bound.
@@ -197,12 +203,39 @@ func articleHref(articleURL, feedURL string) string {
 }
 
 // configuredFeed returns the entry whose URL matches, if any.
+// sameFeedURL reports whether two feed URLs name the same feed. Scheme and
+// host compare case-insensitively; userinfo, path, and query compare
+// exactly, so differently credentialed URLs stay distinct. Unparsable URLs
+// fall back to exact string matching.
+func sameFeedURL(a, b string) bool {
+	first, errA := url.Parse(a)
+	second, errB := url.Parse(b)
+	if errA != nil || errB != nil {
+		return a == b
+	}
+
+	firstUser, secondUser := "", ""
+	if first.User != nil {
+		firstUser = first.User.String()
+	}
+
+	if second.User != nil {
+		secondUser = second.User.String()
+	}
+
+	return strings.EqualFold(first.Scheme, second.Scheme) &&
+		strings.EqualFold(first.Host, second.Host) &&
+		firstUser == secondUser &&
+		first.EscapedPath() == second.EscapedPath() &&
+		first.RawQuery == second.RawQuery
+}
+
 func (a *App) configuredFeed(feedURL string) (feeds.Feed, bool) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
 	for _, feed := range a.feeds {
-		if feed.URL == feedURL {
+		if sameFeedURL(feed.URL, feedURL) {
 			return feed, true
 		}
 	}
@@ -210,7 +243,10 @@ func (a *App) configuredFeed(feedURL string) (feeds.Feed, bool) {
 	return feeds.Feed{}, false
 }
 
-func (a *App) handleHome(w http.ResponseWriter, r *http.Request) error {
+// homeSections copies the feed list into sections under the read lock. The
+// response is written after the lock is released, so a slow client cannot
+// hold the lock while the body streams.
+func (a *App) homeSections() []templates.FeedSection {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
@@ -233,6 +269,12 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) error {
 			Href:  feedHref(feed.URL),
 		})
 	}
+
+	return sections
+}
+
+func (a *App) handleHome(w http.ResponseWriter, r *http.Request) error {
+	sections := a.homeSections()
 
 	return writeHTML(r.Context(), w, http.StatusOK, templates.Home(templates.HomeProps{Sections: sections}))
 }
@@ -259,6 +301,9 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 
 	rawURL := strings.TrimSpace(r.PostFormValue("url"))
 	section := r.PostFormValue("section")
+	if section == "" {
+		section = feeds.SectionNews
+	}
 
 	if rawURL == "" {
 		return addFormError(w, r, rawURL, feeds.SectionNews, "Enter a feed URL.")
@@ -284,38 +329,53 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 		return addFormError(w, r, rawURL, section, "Could not fetch that feed. Check the URL and try again.")
 	}
 
-	if parsed.Title == "" {
+	title := strings.TrimSpace(parsed.Title)
+	if title == "" {
 		return addFormError(w, r, rawURL, section, "That feed has no title and cannot be listed.")
 	}
 
-	added := feeds.Feed{Title: parsed.Title, URL: rawURL, Section: section}
+	added := feeds.Feed{Title: title, URL: rawURL, Section: section}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	// Decide and store under the lock. Render any response after unlocking,
+	// so a slow client cannot hold the lock.
+	duplicate, err := func() (bool, error) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
 
-	// Re-check under the write lock: two concurrent adds of the same URL
-	// must not both land.
-	for _, feed := range a.feeds {
-		if feed.URL == rawURL {
-			return addFormError(w, r, rawURL, section, "That feed is already listed.")
-		}
-	}
-
-	if a.storePath != "" {
-		next := make([]feeds.Feed, 0, len(a.userFeeds)+1)
-		next = append(next, a.userFeeds...)
-		next = append(next, added)
-
-		if err := feeds.SaveUserFeeds(a.storePath, next); err != nil {
-			slog.Error("save user feeds", "err", err)
-
-			return &httpError{Status: http.StatusInternalServerError, Msg: "Internal Server Error"}
+		// Re-check under the write lock: two concurrent adds of the same URL
+		// must not both land.
+		for _, feed := range a.feeds {
+			if sameFeedURL(feed.URL, rawURL) {
+				return true, nil
+			}
 		}
 
-		a.userFeeds = next
+		if a.storePath != "" {
+			next := make([]feeds.Feed, 0, len(a.userFeeds)+1)
+			next = append(next, a.userFeeds...)
+			next = append(next, added)
+
+			if err := feeds.SaveUserFeeds(a.storePath, next); err != nil {
+				return false, err
+			}
+
+			a.userFeeds = next
+		}
+
+		a.feeds = append(a.feeds, added)
+
+		return false, nil
+	}()
+	if err != nil {
+		slog.Error("save user feeds", "err", err)
+
+		return &httpError{Status: http.StatusInternalServerError, Msg: "Internal Server Error"}
 	}
 
-	a.feeds = append(a.feeds, added)
+	if duplicate {
+		return addFormError(w, r, rawURL, section, "That feed is already listed.")
+	}
+
 	slog.Info("feed added", "url", rawURL, "section", section)
 
 	w.Header().Set("Location", feedHref(rawURL))

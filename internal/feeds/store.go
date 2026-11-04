@@ -3,6 +3,7 @@ package feeds
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -26,12 +27,25 @@ func LoadUserFeeds(path string) ([]Feed, error) {
 		return nil, fmt.Errorf("parse user feeds: %w", err)
 	}
 
+	for i, feed := range feeds {
+		if feed.Title == "" || feed.URL == "" {
+			return nil, fmt.Errorf("user feed %d: title and url are required", i)
+		}
+
+		if feed.Section != SectionNews && feed.Section != SectionSports {
+			return nil, fmt.Errorf("user feed %d: section must be %q or %q", i, SectionNews, SectionSports)
+		}
+	}
+
 	return feeds, nil
 }
 
-// SaveUserFeeds writes feeds to path, replacing it atomically enough for a
-// single-operator server: write to a temp file in the same directory, then
-// rename over the target.
+// SaveUserFeeds writes feeds to path. The write is atomic enough for a
+// single server instance — temp file in the same directory, synced, then
+// renamed over the target — but it is NOT safe for concurrent writers:
+// each save builds from its own in-memory list, so two processes sharing
+// one file can overwrite each other's feeds. Run a single instance per
+// FEEDS_FILE.
 func SaveUserFeeds(path string, feeds []Feed) error {
 	body, err := json.MarshalIndent(feeds, "", "  ")
 	if err != nil {
@@ -54,6 +68,13 @@ func SaveUserFeeds(path string, feeds []Feed) error {
 		return fmt.Errorf("write user feeds: %w", err)
 	}
 
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+
+		return fmt.Errorf("sync user feeds: %w", err)
+	}
+
 	if err := tmp.Close(); err != nil {
 		_ = os.Remove(tmpName)
 
@@ -64,6 +85,20 @@ func SaveUserFeeds(path string, feeds []Feed) error {
 		_ = os.Remove(tmpName)
 
 		return fmt.Errorf("replace user feeds: %w", err)
+	}
+
+	// The rename has committed. Sync the directory so the entry survives a
+	// crash, but only log failures: the file is already replaced, so an
+	// error here must not fail the save and desync memory from disk. The
+	// sync can also fail on platforms that do not support it.
+	if dir, err := os.Open(filepath.Dir(path)); err != nil {
+		slog.Warn("open user feeds dir", "err", err)
+	} else {
+		if err := dir.Sync(); err != nil {
+			slog.Warn("sync user feeds dir", "err", err)
+		}
+
+		_ = dir.Close()
 	}
 
 	return nil

@@ -155,6 +155,42 @@ func TestAddFeedAddsValidFeed(t *testing.T) {
 	}
 }
 
+// An omitted section defaults to News instead of failing validation.
+func TestAddFeedDefaultsSection(t *testing.T) {
+	newURL := "https://example.com/nodefault.xml"
+	handler := newAddTestHandler(t, feedStub(t, newURL), "")
+
+	rec := postForm(t, handler, "/add", url.Values{"url": {newURL}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+
+	home := do(t, handler, "/").Body.String()
+	if !strings.Contains(home, `<h2 class="section-title">News</h2>`) {
+		t.Error("added feed did not land in the News section")
+	}
+}
+
+// Scheme and host compare case-insensitively, so a differently cased
+// spelling of a listed URL is still a duplicate.
+func TestAddFeedRejectsCaseVariantDuplicate(t *testing.T) {
+	newURL := "https://example.com/case.xml"
+	handler := newAddTestHandler(t, feedStub(t, newURL), "")
+
+	if rec := postForm(t, handler, "/add", url.Values{"url": {newURL}, "section": {"News"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("first add status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+
+	dup := postForm(t, handler, "/add", url.Values{"url": {"https://EXAMPLE.com/case.xml"}, "section": {"News"}})
+	if dup.Code != http.StatusBadRequest {
+		t.Fatalf("duplicate status = %d, want %d", dup.Code, http.StatusBadRequest)
+	}
+
+	if !strings.Contains(dup.Body.String(), "already listed") {
+		t.Error("duplicate response is missing the explanation")
+	}
+}
+
 func TestAddFeedRejectsBadInput(t *testing.T) {
 	rssBody, err := fixtures.Read(fixtures.RSS)
 	if err != nil {
@@ -163,13 +199,16 @@ func TestAddFeedRejectsBadInput(t *testing.T) {
 
 	transport := &stubTransport{handle: func(req *http.Request) (*http.Response, error) {
 		switch req.URL.String() {
-		case "https://example.com/good.xml", "https://example.com/notitle.xml", "https://example.com/garbage.xml":
+		case "https://example.com/good.xml", "https://example.com/notitle.xml", "https://example.com/garbage.xml", "https://example.com/blanktitle.xml":
 			body := rssBody
 			if strings.Contains(req.URL.String(), "notitle") {
 				body = []byte(`<?xml version="1.0"?><rss version="2.0"><channel><link>https://example.com/</link></channel></rss>`)
 			}
 			if strings.Contains(req.URL.String(), "garbage") {
 				body = []byte("not xml at all")
+			}
+			if strings.Contains(req.URL.String(), "blanktitle") {
+				body = []byte(`<?xml version="1.0"?><rss version="2.0"><channel><title><![CDATA[   ]]></title><link>https://example.com/</link></channel></rss>`)
 			}
 
 			return &http.Response{
@@ -196,6 +235,7 @@ func TestAddFeedRejectsBadInput(t *testing.T) {
 		{name: "unreachable", form: url.Values{"url": {"https://example.com/offline.xml"}, "section": {"News"}}, message: "Could not fetch"},
 		{name: "unparsable", form: url.Values{"url": {"https://example.com/garbage.xml"}, "section": {"News"}}, message: "Check the URL"},
 		{name: "no title", form: url.Values{"url": {"https://example.com/notitle.xml"}, "section": {"News"}}, message: "no title"},
+		{name: "blank title", form: url.Values{"url": {"https://example.com/blanktitle.xml"}, "section": {"News"}}, message: "no title"},
 	}
 
 	for _, test := range tests {

@@ -55,9 +55,9 @@ Parsed feeds are cached in memory for 5 minutes and scraped articles for
 `Cache-Control` so browsers reuse them, with `max-age` derived from the
 entry's remaining lifetime (never more than the TTL). Non-2xx origin bodies
 still render but are neither cached nor advertised as cacheable. The article
-cache is capped at 1000 entries, evicting expired then soonest-expiring
-first, since article URLs are caller-controlled; feed URLs come from the
-closed configured list. Failures are never cached.
+cache is capped at 1000 entries and the feed cache at 100, evicting expired
+then soonest-expiring first; feed keys are the configured list plus feeds
+accepted through `POST /add`. Failures are never cached.
 
 ## Development
 

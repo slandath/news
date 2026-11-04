@@ -30,6 +30,31 @@ func TestLoadUserFeedsRejectsCorruptFile(t *testing.T) {
 	}
 }
 
+func TestLoadUserFeedsRejectsInvalidEntries(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "empty title", body: `[{"title":"","url":"https://example.com/a","section":"News"}]`},
+		{name: "empty url", body: `[{"title":"A","url":"","section":"News"}]`},
+		{name: "bad section", body: `[{"title":"A","url":"https://example.com/a","section":"Weather"}]`},
+		{name: "missing section", body: `[{"title":"A","url":"https://example.com/a"}]`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "feeds.json")
+			if err := os.WriteFile(path, []byte(test.body), 0o600); err != nil {
+				t.Fatalf("write fixture: %v", err)
+			}
+
+			if _, err := LoadUserFeeds(path); err == nil {
+				t.Errorf("LoadUserFeeds accepted %s, want an error", test.body)
+			}
+		})
+	}
+}
+
 func TestSaveAndLoadUserFeedsRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "feeds.json")
 	want := []Feed{

@@ -1,4 +1,7 @@
-package scrape
+// Package ssrf guards the server's outbound fetches against server-side
+// request forgery: article and feed URLs ultimately come from users, so
+// dialing is restricted to public IPs.
+package ssrf
 
 import (
 	"context"
