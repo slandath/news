@@ -19,8 +19,10 @@ func TestConfigsCoverExactlyTheScrapingSites(t *testing.T) {
 	sort.Strings(got)
 
 	want := []string{
+		"bbc.co.uk",
 		"clickondetroit.com",
 		"cnbc.com",
+		"espn.com",
 		"nbcnews.com",
 		"pcgamer.com",
 		"slashfilm.com",

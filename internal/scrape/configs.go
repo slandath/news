@@ -21,6 +21,13 @@ type SiteConfig struct {
 // config. Hosts missing from this map are not scraped; the article handler
 // redirects them to the source URL instead.
 var Configs = map[string]SiteConfig{
+	"bbc.co.uk": {
+		Article: "article p",
+		Title:   "h1#main-heading",
+		ArticleWrapper: func(doc *goquery.Document) []string {
+			return texts(doc, "article p")
+		},
+	},
 	"clickondetroit.com": {
 		Article: "p.article-text",
 		Title:   "h1.headline",
@@ -33,6 +40,13 @@ var Configs = map[string]SiteConfig{
 		Title:   "h1.ArticleHeader-headline",
 		ArticleWrapper: func(doc *goquery.Document) []string {
 			return texts(doc, "div.group p")
+		},
+	},
+	"espn.com": {
+		Article: "div.article-body p",
+		Title:   "h1",
+		ArticleWrapper: func(doc *goquery.Document) []string {
+			return texts(doc, "div.article-body p")
 		},
 	},
 	"nbcnews.com": {
