@@ -10,6 +10,8 @@ import (
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/slandath/news/internal/useragent"
 )
 
 // maxArticleBytes caps how much of an article page is read. Beyond this the
@@ -40,6 +42,10 @@ func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (t
 	if err != nil {
 		return "", nil, fmt.Errorf("build request: %w", err)
 	}
+
+	// The scraper keeps its own client, built wherever it is wired, so the
+	// header is set here to guarantee it on every article fetch.
+	req.Header.Set("User-Agent", useragent.UserAgent)
 
 	resp, err := s.client.Do(req)
 	if err != nil {

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/mmcdole/gofeed"
+
+	"github.com/slandath/news/internal/useragent"
 )
 
 // Parser is the narrow surface the feed handler needs. *gofeed.Parser
@@ -36,9 +38,9 @@ func New() *gofeed.Parser {
 	parser.MaxByteSize = maxFeedBytes
 
 	// gofeed's ParseURLWithContext uses http.DefaultClient when Client is
-	// nil. Hand it an explicit client so the timeout applies; tests replace
-	// this field with a stub transport.
-	parser.Client = &http.Client{Timeout: feedTimeout}
+	// nil. Hand it an explicit client so the timeout applies and outlets see
+	// the app's User-Agent; tests replace this field with a stub transport.
+	parser.Client = &http.Client{Timeout: feedTimeout, Transport: useragent.Transport(nil)}
 
 	return parser
 }

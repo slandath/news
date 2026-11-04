@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/slandath/news/internal/fixtures"
+	"github.com/slandath/news/internal/useragent"
 )
 
 // roundTripFunc lets a test stand in for the network, mirroring the TS suite's
@@ -50,6 +51,9 @@ func TestExtractReadsArticle(t *testing.T) {
 				method = req.Method
 				if got, want := req.URL.Hostname(), "www."+domain; got != want {
 					t.Errorf("hostname = %q, want %q", got, want)
+				}
+				if got, want := req.Header.Get("User-Agent"), useragent.UserAgent; got != want {
+					t.Errorf("User-Agent = %q, want %q", got, want)
 				}
 				return okResponse(req, bytes.NewReader(body)), nil
 			})}
