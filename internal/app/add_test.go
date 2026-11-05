@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mmcdole/gofeed"
 	"github.com/slandath/news/internal/app"
+	"github.com/slandath/news/internal/cache"
 	"github.com/slandath/news/internal/feeds"
 	"github.com/slandath/news/internal/fixtures"
 	"github.com/slandath/news/internal/rss"
@@ -35,6 +38,7 @@ func newAddTestHandler(t *testing.T, transport http.RoundTripper, storePath stri
 		Parser:        parser,
 		Scraper:       scrape.New(&http.Client{Transport: transport}),
 		Favicon:       []byte("icon"),
+		FeedCache:     cache.New[*gofeed.Feed](app.FeedCacheTTL),
 		FeedStorePath: storePath,
 	})
 }
@@ -93,12 +97,20 @@ func TestAddFormRenders(t *testing.T) {
 			t.Errorf("form is missing %q", want)
 		}
 	}
+
+	// The add link lives in the header on every other page, never here:
+	// the header label already names this page. Match the element, not
+	// the substring: the inlined stylesheet mentions nav-add on all pages.
+	if strings.Contains(rec.Body.String(), `<li class="pure-menu-item nav-add">`) {
+		t.Error("add page renders its own nav link")
+	}
 }
 
 func TestAddFeedAddsValidFeed(t *testing.T) {
 	storePath := filepath.Join(t.TempDir(), "user-feeds.json")
 	newURL := "https://example.com/custom.xml"
-	handler := newAddTestHandler(t, feedStub(t, newURL), storePath)
+	stub := feedStub(t, newURL)
+	handler := newAddTestHandler(t, stub, storePath)
 
 	rec := postForm(t, handler, "/add", url.Values{
 		"url":     {newURL},
@@ -153,12 +165,24 @@ func TestAddFeedAddsValidFeed(t *testing.T) {
 	if len(stored) != 1 {
 		t.Errorf("stored %d feeds after duplicate, want 1", len(stored))
 	}
+
+	// The add seeds the feed cache: with the origin down, the redirect
+	// target still renders from the just-fetched feed.
+	stub.handle = func(*http.Request) (*http.Response, error) { return nil, errOffline }
+
+	seeded := do(t, handler, "/feed?url="+url.QueryEscape(newURL))
+	if seeded.Code != http.StatusOK {
+		t.Fatalf("cached feed status = %d, want %d", seeded.Code, http.StatusOK)
+	}
 }
 
-// An omitted section defaults to News instead of failing validation.
+// An omitted section defaults to News instead of failing validation. The
+// heading alone would not prove it: the built-in News feeds always render
+// one, so the stored section is asserted too.
 func TestAddFeedDefaultsSection(t *testing.T) {
 	newURL := "https://example.com/nodefault.xml"
-	handler := newAddTestHandler(t, feedStub(t, newURL), "")
+	storePath := filepath.Join(t.TempDir(), "user-feeds.json")
+	handler := newAddTestHandler(t, feedStub(t, newURL), storePath)
 
 	rec := postForm(t, handler, "/add", url.Values{"url": {newURL}})
 	if rec.Code != http.StatusSeeOther {
@@ -168,6 +192,15 @@ func TestAddFeedDefaultsSection(t *testing.T) {
 	home := do(t, handler, "/").Body.String()
 	if !strings.Contains(home, `<h2 class="section-title">News</h2>`) {
 		t.Error("added feed did not land in the News section")
+	}
+
+	stored, err := feeds.LoadUserFeeds(storePath)
+	if err != nil {
+		t.Fatalf("load stored feeds: %v", err)
+	}
+
+	if len(stored) != 1 || stored[0].Section != feeds.SectionNews {
+		t.Errorf("stored feeds = %+v, want one feed in the News section", stored)
 	}
 }
 
@@ -188,6 +221,117 @@ func TestAddFeedRejectsCaseVariantDuplicate(t *testing.T) {
 
 	if !strings.Contains(dup.Body.String(), "already listed") {
 		t.Error("duplicate response is missing the explanation")
+	}
+}
+
+// A default port and an empty path are the same feed as the bare host and
+// "/", so resubmits under either spelling are duplicates.
+func TestAddFeedRejectsNormalizedDuplicates(t *testing.T) {
+	tests := []struct {
+		name  string
+		first string
+		dup   string
+	}{
+		{name: "default https port", first: "https://example.com/port.xml", dup: "https://example.com:443/port.xml"},
+		{name: "empty path", first: "https://example.com/", dup: "https://example.com"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := newAddTestHandler(t, feedStub(t, test.first), "")
+
+			if rec := postForm(t, handler, "/add", url.Values{"url": {test.first}, "section": {"News"}}); rec.Code != http.StatusSeeOther {
+				t.Fatalf("first add status = %d, want %d", rec.Code, http.StatusSeeOther)
+			}
+
+			dup := postForm(t, handler, "/add", url.Values{"url": {test.dup}, "section": {"News"}})
+			if dup.Code != http.StatusBadRequest {
+				t.Fatalf("duplicate status = %d, want %d", dup.Code, http.StatusBadRequest)
+			}
+
+			if !strings.Contains(dup.Body.String(), "already listed") {
+				t.Error("duplicate response is missing the explanation")
+			}
+		})
+	}
+}
+
+// A cross-site page can auto-submit the form; browsers label such
+// requests, and they are rejected before any validation runs.
+func TestAddFeedRejectsCrossSiteRequest(t *testing.T) {
+	newURL := "https://example.com/xsite.xml"
+	handler := newAddTestHandler(t, feedStub(t, newURL), "")
+
+	form := url.Values{"url": {newURL}, "section": {"News"}}
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/add", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+
+	if !strings.Contains(rec.Body.String(), "come from this site") {
+		t.Error("response is missing the cross-site explanation")
+	}
+
+	home := do(t, handler, "/").Body.String()
+	if strings.Contains(home, "example.com/xsite.xml") {
+		t.Error("cross-site submit leaked onto the home page")
+	}
+}
+
+// The open form cannot grow the feed list without bound: past the maximum,
+// adds are rejected and the stored file is untouched.
+func TestAddFeedRejectsOverLimit(t *testing.T) {
+	rssBody, err := fixtures.Read(fixtures.RSS)
+	if err != nil {
+		t.Fatalf("read %s: %v", fixtures.RSS, err)
+	}
+
+	transport := &stubTransport{handle: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(bytes.NewReader(rssBody)),
+			Request:    req,
+		}, nil
+	}}
+	storePath := filepath.Join(t.TempDir(), "user-feeds.json")
+	handler := newAddTestHandler(t, transport, storePath)
+
+	fill := func(i int) *httptest.ResponseRecorder {
+		return postForm(t, handler, "/add", url.Values{
+			"url":     {fmt.Sprintf("https://example.com/feed-%d.xml", i)},
+			"section": {"News"},
+		})
+	}
+
+	for i := 0; i < app.MaxUserFeeds; i++ {
+		if rec := fill(i); rec.Code != http.StatusSeeOther {
+			t.Fatalf("add %d status = %d, want %d", i, rec.Code, http.StatusSeeOther)
+		}
+	}
+
+	over := fill(app.MaxUserFeeds)
+	if over.Code != http.StatusBadRequest {
+		t.Fatalf("over-limit status = %d, want %d", over.Code, http.StatusBadRequest)
+	}
+
+	if !strings.Contains(over.Body.String(), "maximum number of feeds") {
+		t.Error("over-limit response is missing the explanation")
+	}
+
+	stored, err := feeds.LoadUserFeeds(storePath)
+	if err != nil {
+		t.Fatalf("load stored feeds: %v", err)
+	}
+
+	if len(stored) != app.MaxUserFeeds {
+		t.Errorf("stored %d feeds, want %d", len(stored), app.MaxUserFeeds)
 	}
 }
 
@@ -287,5 +431,13 @@ func TestHomeMergesRepeatedSections(t *testing.T) {
 
 	if got, want := strings.Count(body, `<h2 class="section-title">Sports</h2>`), 1; got != want {
 		t.Errorf("rendered %d Sports headings, want %d", got, want)
+	}
+
+	// The heading counts alone would pass if a feed card went missing, so
+	// both News cards are asserted directly.
+	for _, title := range []string{"News One", "News Two", "Sports One"} {
+		if !strings.Contains(body, title) {
+			t.Errorf("home page is missing the %q feed card", title)
+		}
 	}
 }

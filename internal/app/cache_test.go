@@ -60,6 +60,33 @@ func TestFeedSecondRequestHitsCache(t *testing.T) {
 	}
 }
 
+// A case-variant spelling of a configured feed shares its cache entry: the
+// handler canonicalizes to the configured URL before lookup and fetch, so
+// the variant renders with no second outbound request.
+func TestFeedVariantSpellingHitsCache(t *testing.T) {
+	transport := newStubTransport(t)
+	handler := newCachedTestHandler(t, transport)
+	canonical := feeds.All[0].URL
+
+	first := do(t, handler, "/feed?url="+url.QueryEscape(canonical))
+	if first.Code != http.StatusOK {
+		t.Fatalf("first status = %d, want %d", first.Code, http.StatusOK)
+	}
+
+	variant := do(t, handler, "/feed?url="+url.QueryEscape("https://WWW.SLASHFILM.COM/feed/"))
+	if variant.Code != http.StatusOK {
+		t.Fatalf("variant status = %d, want %d", variant.Code, http.StatusOK)
+	}
+
+	if len(transport.requests) != 1 {
+		t.Errorf("made %d outbound requests, want 1 (variant should hit the canonical entry)", len(transport.requests))
+	}
+
+	if first.Body.String() != variant.Body.String() {
+		t.Error("variant body differs from the canonical body")
+	}
+}
+
 func TestArticleSecondRequestHitsCache(t *testing.T) {
 	transport := newStubTransport(t)
 	handler := newCachedTestHandler(t, transport)

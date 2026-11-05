@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // LoadUserFeeds reads user-added feeds from path. A missing file means an
@@ -28,7 +29,7 @@ func LoadUserFeeds(path string) ([]Feed, error) {
 	}
 
 	for i, feed := range feeds {
-		if feed.Title == "" || feed.URL == "" {
+		if strings.TrimSpace(feed.Title) == "" || strings.TrimSpace(feed.URL) == "" {
 			return nil, fmt.Errorf("user feed %d: title and url are required", i)
 		}
 
