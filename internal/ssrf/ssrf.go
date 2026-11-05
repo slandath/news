@@ -42,9 +42,14 @@ func DialPublicIP(ctx context.Context, network, address string) (net.Conn, error
 	return dialer.DialContext(ctx, network, address)
 }
 
+// cgnat is the RFC 6598 shared address space (100.64.0.0/10). Go's
+// IsGlobalUnicast accepts it and IsPrivate does not cover it, yet it is
+// not publicly routable, so it must be refused like the other ranges.
+var cgnat = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+
 // publicIPs reports whether every address is a routable public IP: global
-// unicast, and none of private, loopback, link-local, multicast, or
-// unspecified. An empty set is not public.
+// unicast, and none of private, loopback, link-local, multicast,
+// unspecified, or carrier-grade NAT. An empty set is not public.
 func publicIPs(ips []net.IP) bool {
 	if len(ips) == 0 {
 		return false
@@ -52,7 +57,8 @@ func publicIPs(ips []net.IP) bool {
 
 	for _, ip := range ips {
 		if !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
-			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+			ip.IsUnspecified() || cgnat.Contains(ip) {
 			return false
 		}
 	}

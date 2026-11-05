@@ -214,6 +214,15 @@ func TestHomeRendersEveryFeedLink(t *testing.T) {
 		t.Error("header is missing the site navigation landmark")
 	}
 
+	// The add link belongs to the header bar, not the page body: a move
+	// beneath the heading must fail this test.
+	start, end := strings.Index(body, "<nav"), strings.Index(body, "</nav>")
+	if start < 0 || end < start {
+		t.Error("header markup is not parseable")
+	} else if !strings.Contains(body[start:end], `href="/add"`) {
+		t.Error("header is missing the add-feed link")
+	}
+
 	if !strings.Contains(body, `<ul class="feed-cards">`) {
 		t.Error("feeds are not rendered as a list")
 	}

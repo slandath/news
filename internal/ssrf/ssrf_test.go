@@ -20,6 +20,8 @@ func TestPublicIPs(t *testing.T) {
 		{name: "private 172.16", ips: []string{"172.16.0.1"}, want: false},
 		{name: "private 192.168", ips: []string{"192.168.1.1"}, want: false},
 		{name: "link local metadata", ips: []string{"169.254.169.254"}, want: false},
+		{name: "carrier-grade NAT low", ips: []string{"100.64.0.1"}, want: false},
+		{name: "carrier-grade NAT high", ips: []string{"100.127.255.255"}, want: false},
 		{name: "unspecified v4", ips: []string{"0.0.0.0"}, want: false},
 		{name: "unspecified v6", ips: []string{"::"}, want: false},
 		{name: "multicast", ips: []string{"224.0.0.1"}, want: false},

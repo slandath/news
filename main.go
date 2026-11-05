@@ -77,15 +77,13 @@ func run() error {
 		return fmt.Errorf("load user feeds: %w", err)
 	}
 
-	allFeeds := make([]feeds.Feed, 0, len(feeds.All)+len(userFeeds))
-	allFeeds = append(allFeeds, feeds.All...)
-	allFeeds = append(allFeeds, userFeeds...)
-
 	feedCache := cache.New[*gofeed.Feed](app.FeedCacheTTL)
 	feedCache.SetMaxEntries(app.FeedCacheMaxEntries)
 
+	// app.New appends the stored feeds after the built-ins, skipping any
+	// stored entry that duplicates a built-in URL.
 	handler := app.New(app.Deps{
-		Feeds:         allFeeds,
+		Feeds:         feeds.All,
 		UserFeeds:     userFeeds,
 		Configs:       scrape.Configs,
 		Parser:        rss.New(),

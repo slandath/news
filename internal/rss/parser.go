@@ -3,6 +3,7 @@ package rss
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -41,8 +42,25 @@ func New() *gofeed.Parser {
 	// nil. Hand it an explicit client so the timeout applies and outlets
 	// see the app's User-Agent; main installs DialPublicIP on
 	// http.DefaultTransport separately so only public IPs are dialed.
-	// Tests replace this field with a stub transport.
-	parser.Client = &http.Client{Timeout: feedTimeout, Transport: useragent.Transport(nil)}
+	// An https feed must not downgrade to http mid-redirect: the
+	// cleartext hop is fetched (and its URL persisted) without the
+	// scheme the operator approved. Tests replace this field with a stub
+	// transport.
+	parser.Client = &http.Client{
+		Timeout:   feedTimeout,
+		Transport: useragent.Transport(nil),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+
+			if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+				return errors.New("refusing redirect from https to non-https")
+			}
+
+			return nil
+		},
+	}
 
 	return parser
 }

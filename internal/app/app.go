@@ -42,6 +42,15 @@ const FeedCacheMaxEntries = 100
 // feed URLs, so the cap keeps one-off URLs from growing memory without bound.
 const ArticleCacheMaxEntries = 1000
 
+// MaxUserFeeds bounds how many feeds POST /add accepts. Each accepted URL
+// grows the in-memory list, the persisted file, and the home page, so the
+// open form needs a ceiling. Built-in feeds are not counted.
+const MaxUserFeeds = 100
+
+// errFeedLimit is returned by the add-feed write-lock closure when the
+// user-feed list is already full. It maps to a re-rendered form, not a 500.
+var errFeedLimit = errors.New("feed limit reached")
+
 // cacheControl builds a Cache-Control header from a remaining lifetime.
 // Ceiling keeps a just-stored entry advertising exactly its TTL instead of
 // one second less, and a hit near expiry advertising only what is left, so a
@@ -91,10 +100,36 @@ type App struct {
 	userFeeds    []feeds.Feed
 }
 
-// New returns the application handler.
+// New returns the application handler. UserFeeds are appended after Feeds
+// with duplicates of an earlier entry skipped, so a stored feed that
+// matches a built-in URL (or another stored feed) renders one card, and a
+// dropped copy is not re-persisted on the next save.
 func New(deps Deps) http.Handler {
+	combined := make([]feeds.Feed, 0, len(deps.Feeds)+len(deps.UserFeeds))
+	combined = append(combined, deps.Feeds...)
+
+	users := make([]feeds.Feed, 0, len(deps.UserFeeds))
+
+	for _, feed := range deps.UserFeeds {
+		duplicate := false
+
+		for _, kept := range combined {
+			if sameFeedURL(feed.URL, kept.URL) {
+				duplicate = true
+				break
+			}
+		}
+
+		if duplicate {
+			continue
+		}
+
+		users = append(users, feed)
+		combined = append(combined, feed)
+	}
+
 	app := &App{
-		feeds:        deps.Feeds,
+		feeds:        combined,
 		configs:      deps.Configs,
 		parser:       deps.Parser,
 		scraper:      deps.Scraper,
@@ -102,7 +137,7 @@ func New(deps Deps) http.Handler {
 		feedCache:    deps.FeedCache,
 		articleCache: deps.ArticleCache,
 		storePath:    deps.FeedStorePath,
-		userFeeds:    deps.UserFeeds,
+		userFeeds:    users,
 	}
 
 	mux := http.NewServeMux()
@@ -204,8 +239,10 @@ func articleHref(articleURL, feedURL string) string {
 
 // configuredFeed returns the entry whose URL matches, if any.
 // sameFeedURL reports whether two feed URLs name the same feed. Scheme and
-// host compare case-insensitively; userinfo, path, and query compare
-// exactly, so differently credentialed URLs stay distinct. Unparsable URLs
+// host compare case-insensitively; userinfo and query compare exactly, so
+// differently credentialed URLs stay distinct. A default port (:443 on
+// https, :80 on http) matches a bare host, and an empty path matches "/",
+// so resubmits under either spelling are still duplicates. Unparsable URLs
 // fall back to exact string matching.
 func sameFeedURL(a, b string) bool {
 	first, errA := url.Parse(a)
@@ -224,10 +261,36 @@ func sameFeedURL(a, b string) bool {
 	}
 
 	return strings.EqualFold(first.Scheme, second.Scheme) &&
-		strings.EqualFold(first.Host, second.Host) &&
+		normalizeFeedHost(first) == normalizeFeedHost(second) &&
 		firstUser == secondUser &&
-		first.EscapedPath() == second.EscapedPath() &&
+		normalizeFeedPath(first) == normalizeFeedPath(second) &&
 		first.RawQuery == second.RawQuery
+}
+
+// normalizeFeedHost lowercases the hostname and drops the port when it is
+// the scheme's default, so an explicit :443 (or :80) still matches.
+func normalizeFeedHost(u *url.URL) string {
+	host := strings.ToLower(u.Hostname())
+	if port := u.Port(); port != "" {
+		if (strings.EqualFold(u.Scheme, "https") && port == "443") ||
+			(strings.EqualFold(u.Scheme, "http") && port == "80") {
+			return host
+		}
+
+		return host + ":" + port
+	}
+
+	return host
+}
+
+// normalizeFeedPath treats an empty path as "/", which is what the origin
+// server sees for both spellings.
+func normalizeFeedPath(u *url.URL) string {
+	if u.EscapedPath() == "" {
+		return "/"
+	}
+
+	return u.EscapedPath()
 }
 
 func (a *App) configuredFeed(feedURL string) (feeds.Feed, bool) {
@@ -283,6 +346,10 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) error {
 // inline. It is the one place a 400 carries HTML instead of plain text: a
 // form has to show the message where the user can act on it.
 func addFormError(w http.ResponseWriter, r *http.Request, url, section, problem string) error {
+	// Every validation rejection logs here, so no branch needs its own
+	// slog.Error call to satisfy the error-surface rule.
+	slog.Error("add-feed rejected", "url", url, "section", section, "reason", problem)
+
 	return writeHTML(r.Context(), w, http.StatusBadRequest, templates.Add(templates.AddForm{
 		Error:   problem,
 		URL:     url,
@@ -295,6 +362,13 @@ func (a *App) handleAddForm(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
+	// A cross-site page can auto-submit a form to a local or LAN instance.
+	// Browsers label such requests; direct API use sends no header and
+	// stays allowed.
+	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+		return addFormError(w, r, "", feeds.SectionNews, "Requests must come from this site.")
+	}
+
 	if err := r.ParseForm(); err != nil {
 		return addFormError(w, r, "", feeds.SectionNews, "Could not read the form. Please try again.")
 	}
@@ -306,12 +380,12 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if rawURL == "" {
-		return addFormError(w, r, rawURL, feeds.SectionNews, "Enter a feed URL.")
+		return addFormError(w, r, rawURL, section, "Enter a feed URL.")
 	}
 
 	source, err := url.Parse(rawURL)
 	if err != nil || source.Scheme != "https" || source.Host == "" {
-		return addFormError(w, r, rawURL, feeds.SectionNews, "Feed URL must be an https:// address.")
+		return addFormError(w, r, rawURL, section, "Feed URL must be an https:// address.")
 	}
 
 	if section != feeds.SectionNews && section != feeds.SectionSports {
@@ -350,6 +424,10 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 
+		if len(a.userFeeds) >= MaxUserFeeds {
+			return false, errFeedLimit
+		}
+
 		if a.storePath != "" {
 			next := make([]feeds.Feed, 0, len(a.userFeeds)+1)
 			next = append(next, a.userFeeds...)
@@ -366,6 +444,9 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 
 		return false, nil
 	}()
+	if errors.Is(err, errFeedLimit) {
+		return addFormError(w, r, rawURL, section, "This server already lists the maximum number of feeds.")
+	}
 	if err != nil {
 		slog.Error("save user feeds", "err", err)
 
@@ -374,6 +455,12 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 
 	if duplicate {
 		return addFormError(w, r, rawURL, section, "That feed is already listed.")
+	}
+
+	// Seed the cache with the just-fetched feed so the redirect target
+	// renders without a second origin fetch.
+	if a.feedCache != nil {
+		a.feedCache.Set(rawURL, parsed)
 	}
 
 	slog.Info("feed added", "url", rawURL, "section", section)
@@ -409,6 +496,10 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		writeText(w, http.StatusBadRequest, "Invalid feed URL")
 		return nil
 	}
+
+	// Use the configured spelling from here on: case or fragment variants
+	// of the same feed must share one cache entry and one fetch target.
+	feedURL = configured.URL
 
 	var feed *gofeed.Feed
 

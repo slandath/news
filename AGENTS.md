@@ -61,7 +61,7 @@ The HTTP behaviors are deliberately mixed; don't "unify" them:
 
 Rules behind the table:
 
-- 400s are plain-text bodies written directly by handlers — never route them through the error template
+- 400s are plain-text bodies written directly by handlers — never route them through the error template. Exception: invalid `POST /add` submits re-render the add-feed form with status 400
 - 302s use the hand-written `redirect()` helper (empty body). **Do not use `http.Redirect`** — it writes its own HTML body
 - Timeout detection: `var ne net.Error; errors.As(err, &ne) && ne.Timeout()` via `scrape.IsTimeout`, or the `Client.Timeout` mechanism. **Never match on error strings**; client timeouts are `*url.Error` with `Timeout() == true`, not `context.DeadlineExceeded`
 - Every error path calls `slog.Error(...)` before responding

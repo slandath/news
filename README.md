@@ -98,3 +98,8 @@ linter versions can surface findings.
 Deploys to [Railway](https://railway.com) with
 [Railpack](https://railpack.com), which builds the Go binary automatically.
 Set the healthcheck path to `/health` on the service.
+
+User-added feeds persist in `FEEDS_FILE` (default `user-feeds.json`). Files
+outside a volume live only for the life of a deployment, so to keep added
+feeds across deploys, attach a Railway volume, mount it at `/app/data`, and
+set `FEEDS_FILE=/app/data/user-feeds.json`.
