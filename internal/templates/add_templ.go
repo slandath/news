@@ -65,7 +65,7 @@ func Add(props AddForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<form class=\"pure-form pure-form-stacked\" method=\"post\" action=\"/add\"><label for=\"url\">Feed URL</label> <input id=\"url\" name=\"url\" type=\"url\" required placeholder=\"https://example.com/feed\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<form class=\"pure-form pure-form-stacked add-form\" method=\"post\" action=\"/add\"><label for=\"url\">Feed URL</label> <input id=\"url\" name=\"url\" type=\"url\" required placeholder=\"https://example.com/feed\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

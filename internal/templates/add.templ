@@ -19,7 +19,7 @@ templ Add(props AddForm) {
 					if props.Error != "" {
 						<p class="form-error" role="alert">{ props.Error }</p>
 					}
-					<form class="pure-form pure-form-stacked" method="post" action="/add">
+					<form class="pure-form pure-form-stacked add-form" method="post" action="/add">
 						<label for="url">Feed URL</label>
 						<input id="url" name="url" type="url" required placeholder="https://example.com/feed" value={ props.URL }/>
 						<label for="section">Section</label>
