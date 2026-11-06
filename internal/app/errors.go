@@ -15,7 +15,7 @@ import (
 // Handlers return it and the middleware renders it with the error template.
 //
 // Plain-text responses (the 400s) are written by the handlers themselves and
-// return nil, matching the TypeScript app's c.text() calls.
+// return nil, so there is no error value for the middleware to render.
 type httpError struct {
 	Status int
 	Msg    string
@@ -51,7 +51,7 @@ func writeHTML(ctx context.Context, w http.ResponseWriter, status int, component
 }
 
 // redirect sends a 302 with an empty body. http.Redirect would add a short
-// HTML body with a link, which the TypeScript app never did.
+// HTML body with a link, which no page here needs.
 func redirect(w http.ResponseWriter, location string) {
 	w.Header().Set("Location", location)
 	w.WriteHeader(http.StatusFound)

@@ -60,7 +60,12 @@ func run() error {
 	// the proxy instead of the real destination. There is deliberately no
 	// proxy support for server-side fetches; a deployment that needs one
 	// is an explicit future change, not silent breakage.
-	guarded := http.DefaultTransport.(*http.Transport).Clone()
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return fmt.Errorf("unsupported default transport %T: want *http.Transport", http.DefaultTransport)
+	}
+
+	guarded := base.Clone()
 	guarded.Proxy = nil
 	guarded.DialContext = ssrf.DialPublicIP
 	http.DefaultTransport = guarded

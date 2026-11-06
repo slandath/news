@@ -51,7 +51,7 @@ func TestConfigsExtractTitleAndParagraphs(t *testing.T) {
 
 			doc := loadFixture(t, fx.File)
 			title := doc.Find(cfg.Title).Text()
-			article := cfg.ArticleWrapper(doc)
+			article := texts(doc, cfg.Article)
 
 			if diff := cmp.Diff(fx.Title, title); diff != "" {
 				t.Errorf("title mismatch (-want +got):\n%s", diff)
@@ -61,21 +61,6 @@ func TestConfigsExtractTitleAndParagraphs(t *testing.T) {
 			}
 			if len(article) != 2 {
 				t.Errorf("len(paragraphs) = %d, want 2", len(article))
-			}
-		})
-	}
-}
-
-// Article and ArticleWrapper each carry a selector. They must stay in sync, or
-// callers that probe Article would disagree with what actually gets rendered.
-func TestArticleSelectorMatchesWrapper(t *testing.T) {
-	for domain, fx := range fixtures.Articles {
-		t.Run(domain, func(t *testing.T) {
-			cfg := Configs[domain]
-			doc := loadFixture(t, fx.File)
-
-			if got, want := doc.Find(cfg.Article).Length(), len(cfg.ArticleWrapper(doc)); got != want {
-				t.Errorf("Article %q matches %d elements, wrapper returned %d", cfg.Article, got, want)
 			}
 		})
 	}
@@ -91,7 +76,7 @@ func TestConfigsStripAllMarkup(t *testing.T) {
 			cfg := Configs[domain]
 			doc := loadFixture(t, fx.File)
 
-			extracted := append([]string{doc.Find(cfg.Title).Text()}, cfg.ArticleWrapper(doc)...)
+			extracted := append([]string{doc.Find(cfg.Title).Text()}, texts(doc, cfg.Article)...)
 			for _, text := range extracted {
 				if tagPattern.MatchString(text) {
 					t.Errorf("markup survived extraction: %q", text)

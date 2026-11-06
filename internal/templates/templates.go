@@ -49,7 +49,7 @@ type FeedProps struct {
 }
 
 // ArticleProps is the article page's view model. An empty FeedHref omits the
-// feed breadcrumb entirely.
+// "From {feed}" link entirely.
 type ArticleProps struct {
 	Title      string
 	Paragraphs []string
