@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -110,6 +111,7 @@ func TestParserRefusesDowngradeAnywhereInChain(t *testing.T) {
 		name      string
 		start     string
 		locations map[string]string
+		want      string
 	}{
 		{
 			name:  "direct downgrade",
@@ -117,6 +119,7 @@ func TestParserRefusesDowngradeAnywhereInChain(t *testing.T) {
 			locations: map[string]string{
 				"/start.xml": "http://example.com/end.xml",
 			},
+			want: "refusing redirect",
 		},
 		{
 			name:  "downgrade after upgrade",
@@ -125,6 +128,20 @@ func TestParserRefusesDowngradeAnywhereInChain(t *testing.T) {
 				"/start.xml": "https://example.com/mid.xml",
 				"/mid.xml":   "http://example.com/end.xml",
 			},
+			want: "refusing redirect",
+		},
+		{
+			name:  "chain stops at ten hops",
+			start: "https://example.com/r0.xml",
+			locations: func() map[string]string {
+				chain := make(map[string]string, 11)
+				for i := 0; i <= 10; i++ {
+					chain["/r"+strconv.Itoa(i)+".xml"] = "https://example.com/r" + strconv.Itoa(i+1) + ".xml"
+				}
+
+				return chain
+			}(),
+			want: "stopped after 10 redirects",
 		},
 	}
 
@@ -138,8 +155,8 @@ func TestParserRefusesDowngradeAnywhereInChain(t *testing.T) {
 			}
 
 			_, err := parser.ParseURLWithContext(test.start, context.Background())
-			if err == nil || !strings.Contains(err.Error(), "refusing redirect") {
-				t.Errorf("err = %v, want a redirect refusal", err)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Errorf("err = %v, want %q", err, test.want)
 			}
 		})
 	}
