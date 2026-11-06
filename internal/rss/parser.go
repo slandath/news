@@ -54,7 +54,10 @@ func New() *gofeed.Parser {
 				return errors.New("stopped after 10 redirects")
 			}
 
-			if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+			// Compare against the immediately previous request, not the
+			// first: an http → https → http chain ends cleartext and must
+			// still be refused.
+			if previous := via[len(via)-1]; previous.URL.Scheme == "https" && req.URL.Scheme != "https" {
 				return errors.New("refusing redirect from https to non-https")
 			}
 

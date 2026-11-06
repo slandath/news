@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -80,6 +82,84 @@ func (c *captureTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		Body:       io.NopCloser(bytes.NewReader(c.body)),
 		Request:    req,
 	}, nil
+}
+
+// redirectTransport serves a fixed redirect chain by path so the
+// production CheckRedirect runs without any network.
+type redirectTransport struct {
+	locations map[string]string
+}
+
+func (t *redirectTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if location, ok := t.locations[req.URL.Path]; ok {
+		return &http.Response{
+			StatusCode: http.StatusFound,
+			Header:     http.Header{"Location": {location}},
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+			Request:    req,
+		}, nil
+	}
+
+	return nil, io.ErrUnexpectedEOF
+}
+
+// An https feed must not end on cleartext, wherever the downgrade hides:
+// the first hop, or a later hop after an upgrade. The production
+// CheckRedirect is kept; only the transport is stubbed.
+func TestParserRefusesDowngradeAnywhereInChain(t *testing.T) {
+	tests := []struct {
+		name      string
+		start     string
+		locations map[string]string
+		want      string
+	}{
+		{
+			name:  "direct downgrade",
+			start: "https://example.com/start.xml",
+			locations: map[string]string{
+				"/start.xml": "http://example.com/end.xml",
+			},
+			want: "refusing redirect",
+		},
+		{
+			name:  "downgrade after upgrade",
+			start: "http://example.com/start.xml",
+			locations: map[string]string{
+				"/start.xml": "https://example.com/mid.xml",
+				"/mid.xml":   "http://example.com/end.xml",
+			},
+			want: "refusing redirect",
+		},
+		{
+			name:  "chain stops at ten hops",
+			start: "https://example.com/r0.xml",
+			locations: func() map[string]string {
+				chain := make(map[string]string, 11)
+				for i := 0; i <= 10; i++ {
+					chain["/r"+strconv.Itoa(i)+".xml"] = "https://example.com/r" + strconv.Itoa(i+1) + ".xml"
+				}
+
+				return chain
+			}(),
+			want: "stopped after 10 redirects",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			parser := New()
+			production := parser.Client
+			parser.Client = &http.Client{
+				Transport:     &redirectTransport{locations: test.locations},
+				CheckRedirect: production.CheckRedirect,
+			}
+
+			_, err := parser.ParseURLWithContext(test.start, context.Background())
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Errorf("err = %v, want %q", err, test.want)
+			}
+		})
+	}
 }
 
 // Outlets see the app's User-Agent on feed fetches, not Go's default. The

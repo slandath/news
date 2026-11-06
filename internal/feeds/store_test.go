@@ -59,13 +59,10 @@ func TestLoadUserFeedsRejectsInvalidEntries(t *testing.T) {
 
 // A failed save leaves the existing file untouched: the temp file is
 // created in the target directory, so a staging failure happens before the
-// rename. Read-only directories do not stop root, so this runs non-root
-// only; root runs exercise the success paths instead.
+// rename. Whether chmod can stage that failure is probed instead of
+// assumed: read-only directories do not stop root, and chmod does not
+// restrict directories on Windows.
 func TestSaveOverExistingFilePreservesItOnFailure(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("read-only directories do not block root")
-	}
-
 	dir := t.TempDir()
 	path := filepath.Join(dir, "feeds.json")
 	original := []Feed{
@@ -78,6 +75,12 @@ func TestSaveOverExistingFilePreservesItOnFailure(t *testing.T) {
 
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatalf("chmod: %v", err)
+	}
+
+	if probe, err := os.CreateTemp(dir, "writable-*.tmp"); err == nil {
+		_ = probe.Close()
+		_ = os.Remove(probe.Name())
+		t.Skip("directory is still writable after chmod; cannot stage a failure here")
 	}
 
 	t.Cleanup(func() {
