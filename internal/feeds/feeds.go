@@ -16,10 +16,10 @@ const (
 
 // All is the feed list in the order the site displays it.
 //
-// The order is written out literally instead of being sorted at startup. The
-// TypeScript version sorted with localeCompare (ICU collation), which puts
-// "ClickOnDetroit" before "CNBC"; Go's byte-wise sort does the opposite. The
-// literal order keeps the shipped UI identical. See go-migration-plan.md §8.2.
+// The order is written out literally instead of being sorted at startup.
+// Byte-wise sorting would reorder entries (e.g. "CNBC" before
+// "ClickOnDetroit"), so the literal order keeps the shipped UI stable and
+// the display order asserted by tests.
 //
 // All[0] is the default feed for /feed when no url parameter is supplied.
 var All = []Feed{

@@ -47,9 +47,34 @@ const ArticleCacheMaxEntries = 1000
 // open form needs a ceiling. Built-in feeds are not counted.
 const MaxUserFeeds = 100
 
-// errFeedLimit is returned by the add-feed write-lock closure when the
-// user-feed list is already full. It maps to a re-rendered form, not a 500.
-var errFeedLimit = errors.New("feed limit reached")
+// fetchCached returns the cached value for key with its remaining lifetime,
+// or calls fetch and stores the result when the fetch reports it cacheable.
+// A nil cache always fetches without storing. Errors come only from fetch;
+// a miss is not an error.
+func fetchCached[V any](c *cache.Cache[V], key string, ttl time.Duration, fetch func() (V, bool, error)) (V, time.Duration, error) {
+	if c != nil {
+		if value, remaining, ok := c.Get(key); ok {
+			slog.Info("cache hit", "key", key)
+
+			return value, remaining, nil
+		}
+	}
+
+	slog.Debug("cache miss", "key", key)
+
+	value, cacheable, err := fetch()
+	if err != nil {
+		var zero V
+
+		return zero, ttl, err
+	}
+
+	if cacheable && c != nil {
+		c.Set(key, value)
+	}
+
+	return value, ttl, nil
+}
 
 // cacheControl builds a Cache-Control header from a remaining lifetime.
 // Ceiling keeps a just-stored entry advertising exactly its TTL instead of
@@ -181,12 +206,12 @@ func (a *App) wrap(next handler) http.Handler {
 				"status", recorder.status, "duration", time.Since(start).String())
 		}()
 
+		// Handlers log their own failures with context; the per-request
+		// info line above already records the outcome by status.
 		err := next(recorder, r)
 		if err == nil {
 			return
 		}
-
-		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 
 		var httpErr *httpError
 		if errors.As(err, &httpErr) {
@@ -363,6 +388,43 @@ func (a *App) handleAddForm(w http.ResponseWriter, r *http.Request) error {
 	return writeHTML(r.Context(), w, http.StatusOK, templates.Add(templates.AddForm{}))
 }
 
+// tryAddFeed appends the validated feed under the write lock. It reports
+// whether the URL was already listed, whether the user-feed list is full,
+// or a persistence error. Callers render the response after the lock is
+// released, so a slow client cannot hold it.
+func (a *App) tryAddFeed(added feeds.Feed) (duplicate, full bool, err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Re-check under the write lock: two concurrent adds of the same URL
+	// must not both land.
+	for _, feed := range a.feeds {
+		if sameFeedURL(feed.URL, added.URL) {
+			return true, false, nil
+		}
+	}
+
+	if len(a.userFeeds) >= MaxUserFeeds {
+		return false, true, nil
+	}
+
+	if a.storePath != "" {
+		next := make([]feeds.Feed, 0, len(a.userFeeds)+1)
+		next = append(next, a.userFeeds...)
+		next = append(next, added)
+
+		if err := feeds.SaveUserFeeds(a.storePath, next); err != nil {
+			return false, false, err
+		}
+
+		a.userFeeds = next
+	}
+
+	a.feeds = append(a.feeds, added)
+
+	return false, false, nil
+}
+
 func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 	// A cross-site page can auto-submit a form to a local or LAN instance.
 	// Browsers label such requests; direct API use sends no header and
@@ -414,45 +476,15 @@ func (a *App) handleAddFeed(w http.ResponseWriter, r *http.Request) error {
 
 	// Decide and store under the lock. Render any response after unlocking,
 	// so a slow client cannot hold the lock.
-	duplicate, err := func() (bool, error) {
-		a.mu.Lock()
-		defer a.mu.Unlock()
-
-		// Re-check under the write lock: two concurrent adds of the same URL
-		// must not both land.
-		for _, feed := range a.feeds {
-			if sameFeedURL(feed.URL, rawURL) {
-				return true, nil
-			}
-		}
-
-		if len(a.userFeeds) >= MaxUserFeeds {
-			return false, errFeedLimit
-		}
-
-		if a.storePath != "" {
-			next := make([]feeds.Feed, 0, len(a.userFeeds)+1)
-			next = append(next, a.userFeeds...)
-			next = append(next, added)
-
-			if err := feeds.SaveUserFeeds(a.storePath, next); err != nil {
-				return false, err
-			}
-
-			a.userFeeds = next
-		}
-
-		a.feeds = append(a.feeds, added)
-
-		return false, nil
-	}()
-	if errors.Is(err, errFeedLimit) {
-		return addFormError(w, r, rawURL, section, "This server already lists the maximum number of feeds.")
-	}
+	duplicate, full, err := a.tryAddFeed(added)
 	if err != nil {
 		slog.Error("save user feeds", "err", err)
 
 		return &httpError{Status: http.StatusInternalServerError, Msg: "Internal Server Error"}
+	}
+
+	if full {
+		return addFormError(w, r, rawURL, section, "This server already lists the maximum number of feeds.")
 	}
 
 	if duplicate {
@@ -483,8 +515,9 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 		a.mu.RUnlock()
 	}
 	if feedURL == "" {
-		// Unreachable while the feed list is non-empty; kept for parity with
-		// the TypeScript app's defensive branch.
+		// Unreachable while the feed list is non-empty; the empty-list
+		// guard stays so a misconfiguration fails closed.
+		slog.Error("feed request with no feeds configured")
 		writeText(w, http.StatusBadRequest, "URL undefined")
 		return nil
 	}
@@ -495,6 +528,7 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 	// path already restricts hosts to scrape.Configs the same way.
 	configured, ok := a.configuredFeed(feedURL)
 	if !ok {
+		slog.Error("unconfigured feed url", "url", feedURL)
 		writeText(w, http.StatusBadRequest, "Invalid feed URL")
 		return nil
 	}
@@ -503,35 +537,17 @@ func (a *App) handleFeed(w http.ResponseWriter, r *http.Request) error {
 	// of the same feed must share one cache entry and one fetch target.
 	feedURL = configured.URL
 
-	var feed *gofeed.Feed
-
-	lifetime := FeedCacheTTL
-
-	if a.feedCache != nil {
-		var (
-			remaining time.Duration
-			ok        bool
-		)
-
-		if feed, remaining, ok = a.feedCache.Get(feedURL); ok {
-			slog.Info("feed cache hit", "url", feedURL)
-			lifetime = remaining
-		} else {
-			slog.Debug("feed cache miss", "url", feedURL)
-		}
-	}
-
-	if feed == nil {
+	feed, lifetime, err := fetchCached(a.feedCache, feedURL, FeedCacheTTL, func() (*gofeed.Feed, bool, error) {
 		parsed, err := a.parser.ParseURLWithContext(feedURL, r.Context())
 		if err != nil {
-			return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
+			return nil, false, err
 		}
 
-		feed = parsed
-
-		if a.feedCache != nil {
-			a.feedCache.Set(feedURL, feed)
-		}
+		return parsed, true, nil
+	})
+	if err != nil {
+		slog.Error("fetch feed", "url", feedURL, "err", err)
+		return &httpError{Status: http.StatusBadGateway, Msg: "Bad Feed"}
 	}
 
 	w.Header().Set("Cache-Control", cacheControl(lifetime))
@@ -563,6 +579,7 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 	feedURL := r.URL.Query().Get("feed")
 
 	if urlParam == "" {
+		slog.Error("article request without url")
 		writeText(w, http.StatusBadRequest, "No URL found")
 		return nil
 	}
@@ -574,21 +591,21 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	if source.Scheme != "http" && source.Scheme != "https" {
+		slog.Error("article request with invalid protocol", "url", urlParam)
 		writeText(w, http.StatusBadRequest, "Invalid URL protocol")
 		return nil
 	}
-	// url.Parse is lenient where the WHATWG parser is not: "http://" parses
-	// fine and yields an empty host, while the TypeScript app rejected it as
-	// "Invalid URL".
+	// url.Parse accepts "http://" with an empty host; the empty-host check
+	// below rejects it as "Invalid URL".
 	if source.Host == "" {
+		slog.Error("article request with invalid url", "url", urlParam)
 		writeText(w, http.StatusBadRequest, "Invalid URL")
 		return nil
 	}
 
 	sourceURL := source.String()
 
-	// Hostnames are lowercased to match the WHATWG URL parser, which the
-	// TypeScript app relied on.
+	// Hostnames are lowercased before the scrape.Configs lookup.
 	domain := strings.TrimPrefix(strings.ToLower(source.Hostname()), "www.")
 	config, ok := a.configs[domain]
 	if !ok {
@@ -596,59 +613,34 @@ func (a *App) handleArticle(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	var (
-		title      string
-		paragraphs []string
-		cached     bool
-	)
-
-	lifetime := ArticleCacheTTL
-
-	if a.articleCache != nil {
-		var (
-			entry     Article
-			remaining time.Duration
-			ok        bool
-		)
-
-		if entry, remaining, ok = a.articleCache.Get(sourceURL); ok {
-			slog.Info("article cache hit", "host", source.Host, "path", source.Path)
-
-			title, paragraphs, cached = entry.Title, entry.Paragraphs, true
-			lifetime = remaining
-		} else {
-			slog.Debug("article cache miss", "host", source.Host, "path", source.Path)
-		}
-	}
-
-	// fresh reports the origin status of an uncached fetch. Only a 2xx body
-	// is cached or advertised as cacheable: an error page must not linger
-	// for an hour in the server cache or in a browser.
+	// fresh reports the origin status of an uncached fetch; a hit counts as
+	// 2xx since only 2xx bodies are ever stored. Only a 2xx body is cached
+	// or advertised as cacheable: an error page must not linger for an hour
+	// in the server cache or in a browser.
 	fresh := http.StatusOK
 
-	if !cached {
-		var (
-			err    error
-			status int
-		)
-
-		title, paragraphs, status, err = a.scraper.Extract(r.Context(), sourceURL, config)
+	entry, lifetime, err := fetchCached(a.articleCache, sourceURL, ArticleCacheTTL, func() (Article, bool, error) {
+		title, paragraphs, status, err := a.scraper.Extract(r.Context(), sourceURL, config)
 		if err != nil {
-			if scrape.IsTimeout(err) {
-				return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
-			}
-
-			slog.Error("scrape article", "url", sourceURL, "err", err)
-			redirect(w, sourceURL)
-			return nil
+			return Article{}, false, err
 		}
 
 		fresh = status
 
-		if fresh >= 200 && fresh < 300 && a.articleCache != nil {
-			a.articleCache.Set(sourceURL, Article{Title: title, Paragraphs: paragraphs})
+		return Article{Title: title, Paragraphs: paragraphs}, status >= 200 && status < 300, nil
+	})
+	if err != nil {
+		if scrape.IsTimeout(err) {
+			slog.Error("article fetch timeout", "url", sourceURL, "err", err)
+			return &httpError{Status: http.StatusGatewayTimeout, Msg: "Request Timeout"}
 		}
+
+		slog.Error("scrape article", "url", sourceURL, "err", err)
+		redirect(w, sourceURL)
+		return nil
 	}
+
+	title, paragraphs := entry.Title, entry.Paragraphs
 
 	if fresh >= 200 && fresh < 300 {
 		w.Header().Set("Cache-Control", cacheControl(lifetime))

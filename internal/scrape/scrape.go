@@ -71,7 +71,7 @@ func (s *Scraper) Extract(ctx context.Context, rawURL string, cfg SiteConfig) (t
 		return "", nil, resp.StatusCode, fmt.Errorf("parse article: %w", err)
 	}
 
-	return doc.Find(cfg.Title).Text(), cfg.ArticleWrapper(doc), resp.StatusCode, nil
+	return doc.Find(cfg.Title).Text(), texts(doc, cfg.Article), resp.StatusCode, nil
 }
 
 // IsTimeout reports whether err means the page did not arrive in time, as
