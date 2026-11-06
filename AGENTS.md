@@ -1,6 +1,6 @@
 # AI Agent Guidelines
 
-This file provides instructions for AI coding assistants working on the RSS Feed Reader project. The codebase is pure Go (Go 1.27); there is no Node, TypeScript, or package-manager tooling left anywhere in the repo.
+This file provides instructions for AI coding assistants working on the RSS Feed Reader project. The codebase is pure Go (Go 1.27) with no Node, TypeScript, or package-manager tooling.
 
 ## Build, Lint, and Test Commands
 
@@ -38,9 +38,10 @@ Formatting and linting are enforced in CI (`.github/workflows/ci.yml`): the stal
 
 - **Never use `templ.Raw`.** Every value interpolated with `${}` in a `.templ` file is HTML-escaped by templ; `templ.Raw` bypasses that
 - Scraped text stays plain text: extraction functions return `[]string` / `string` derived from node `.Text()` (goquery's text-only extraction), never from outer HTML
+- `gofeed` parses `<description>` into HTML — never render it; only text-only extraction output reaches templates
 - Templates receive pre-built hrefs and plain strings only
 
-### Error surface (parity with the original TS app)
+### Error surface
 
 The HTTP behaviors are deliberately mixed; don't "unify" them:
 
@@ -68,16 +69,16 @@ Rules behind the table:
 
 ### Feed data
 
-- `internal/feeds.Feed` entries are in **hardcoded display order**. Never sort feeds at runtime — ICU `localeCompare` and Go's byte-order `<` disagree on this data, and the order is asserted by tests
+- `internal/feeds.Feed` entries are in **hardcoded display order**. Never sort feeds at runtime — byte-order sorting disagrees with the curated order, and the order is asserted by tests
 - A configured feed's title overrides the feed's own `<title>`
 - An absent/empty `?url=` on `/feed` falls back to `feeds.All[0]` with status 200 (not a 400)
-- Only **configured** feed URLs are fetchable on `/feed`: `url.Values` are client-controlled and a feed URL outside `feeds.All` gets a plain-text 400 `Invalid feed URL` with no outbound request. This is a deliberate deviation from the TS app (which fetched any URL); approved during the pre-merge review
-- Missing `pubDate` renders as an empty cell; never render the literal `undefined`
+- Only **configured** feed URLs are fetchable on `/feed`: `url.Values` are client-controlled and a feed URL outside the configured list gets a plain-text 400 `Invalid feed URL` with no outbound request
+- Missing `pubDate` renders as an empty cell; never render a placeholder
 
 ### URLs and hosts
 
 - Hostname is lowercased before the `scrape.Configs` lookup; config keys are stored without `www.`
-- Hrefs are built with `url.Values.Encode()` — which sorts params, so links emit `feed=…&url=…` order. This differs from the old TS output (`url=…&feed=…`); when asserting on rendered HTML, compare **decoded query values**, not raw href strings
+- Hrefs are built with `url.Values.Encode()` — which sorts params, so links emit `feed=…&url=…` order; when asserting on rendered HTML, compare **decoded query values**, not raw href strings
 - `&` in rendered hrefs appears as `&amp;` (correct). Test with html-escaped expectations or entity-decode first
 
 ### Code conventions
@@ -86,6 +87,7 @@ Rules behind the table:
 - No `panic` outside `init`/startup code
 - `context.Context` is always the first parameter
 - Don't shadow builtins (`max`, `min`, `len`, `append`) as identifiers
+- Slice strings as `[]rune`, never bytes — byte slicing splits multi-byte characters (see `truncate` in `internal/templates/templates.go`)
 - Functions get explicit return types; interfaces are defined at the consumer (`internal/app.Deps` is the wiring point for parser, scraper, favicon, feeds)
 - Inject your `*http.Client` (parser, scraper) so tests can stub transports — never construct clients inside handlers
 - Feeds, configs, and page templates take plain Go data; keep `internal/*` decoupled — `app` composes, sub-packages never import `app`
@@ -102,7 +104,6 @@ Rules behind the table:
 - `internal/templates/` - `.templ` sources and committed generated output for home, feed, article, error pages
 - `internal/fixtures/fixtures.go` - Hostile-payload expectation table shared by tests
 - `testdata/` - Fixture HTML and RSS consumed by tests
-- `go-migration-plan.md` - Historical plan for the TS→Go port; §8 records verified traps (templ escaping, sort order, rune slicing, timeout detection) still worth reading
 
 ## Project Overview
 
