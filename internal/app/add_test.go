@@ -55,9 +55,9 @@ func postForm(t *testing.T, handler http.Handler, target string, form url.Values
 	return rec
 }
 
-// feedStub serves the shared RSS fixture for one extra URL on top of the
-// standard corpus, so a brand-new feed URL validates and parses.
-func feedStub(t *testing.T, newURL string) *stubTransport {
+// feedStub serves the shared RSS fixture for extra URLs on top of the
+// standard corpus, so brand-new feed URLs validate and parse.
+func feedStub(t *testing.T, newURLs ...string) *stubTransport {
 	t.Helper()
 
 	transport := newStubTransport(t)
@@ -66,9 +66,14 @@ func feedStub(t *testing.T, newURL string) *stubTransport {
 		t.Fatalf("read %s: %v", fixtures.RSS, err)
 	}
 
+	extra := make(map[string]struct{}, len(newURLs))
+	for _, extraURL := range newURLs {
+		extra[extraURL] = struct{}{}
+	}
+
 	previous := transport.handle
 	transport.handle = func(req *http.Request) (*http.Response, error) {
-		if req.URL.String() == newURL {
+		if _, ok := extra[req.URL.String()]; ok {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
@@ -221,6 +226,24 @@ func TestAddFeedRejectsCaseVariantDuplicate(t *testing.T) {
 
 	if !strings.Contains(dup.Body.String(), "already listed") {
 		t.Error("duplicate response is missing the explanation")
+	}
+}
+
+// An IPv6 address ending in ":8443" is not the same endpoint as that
+// address dialed on port 8443, so the second spelling adds a new feed
+// instead of reporting a duplicate.
+func TestAddFeedAcceptsIPv6AddressVersusPort(t *testing.T) {
+	withPort := "https://[2606:4700:4700::1111]:8443/feed.xml"
+	inAddress := "https://[2606:4700:4700::1111:8443]/feed.xml"
+	handler := newAddTestHandler(t, feedStub(t, withPort, inAddress), "")
+
+	if rec := postForm(t, handler, "/add", url.Values{"url": {withPort}, "section": {"News"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("first add status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+
+	second := postForm(t, handler, "/add", url.Values{"url": {inAddress}, "section": {"News"}})
+	if second.Code != http.StatusSeeOther {
+		t.Fatalf("second add status = %d, want %d (distinct endpoint, not a duplicate)", second.Code, http.StatusSeeOther)
 	}
 }
 

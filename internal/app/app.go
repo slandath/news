@@ -261,26 +261,28 @@ func sameFeedURL(a, b string) bool {
 	}
 
 	return strings.EqualFold(first.Scheme, second.Scheme) &&
-		normalizeFeedHost(first) == normalizeFeedHost(second) &&
+		strings.EqualFold(first.Hostname(), second.Hostname()) &&
+		normalizeFeedPort(first) == normalizeFeedPort(second) &&
 		firstUser == secondUser &&
 		normalizeFeedPath(first) == normalizeFeedPath(second) &&
 		first.RawQuery == second.RawQuery
 }
 
-// normalizeFeedHost lowercases the hostname and drops the port when it is
-// the scheme's default, so an explicit :443 (or :80) still matches.
-func normalizeFeedHost(u *url.URL) string {
-	host := strings.ToLower(u.Hostname())
+// normalizeFeedPort returns "" for the scheme's default port, so an explicit
+// :443 (or :80) still matches a bare host. The port compares separately
+// from the hostname: an IPv6 address ending in ":8443" must stay distinct
+// from a ":8443" port on the same address.
+func normalizeFeedPort(u *url.URL) string {
 	if port := u.Port(); port != "" {
 		if (strings.EqualFold(u.Scheme, "https") && port == "443") ||
 			(strings.EqualFold(u.Scheme, "http") && port == "80") {
-			return host
+			return ""
 		}
 
-		return host + ":" + port
+		return port
 	}
 
-	return host
+	return ""
 }
 
 // normalizeFeedPath treats an empty path as "/", which is what the origin

@@ -42,14 +42,40 @@ func DialPublicIP(ctx context.Context, network, address string) (net.Conn, error
 	return dialer.DialContext(ctx, network, address)
 }
 
-// cgnat is the RFC 6598 shared address space (100.64.0.0/10). Go's
-// IsGlobalUnicast accepts it and IsPrivate does not cover it, yet it is
-// not publicly routable, so it must be refused like the other ranges.
-var cgnat = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+// nonPublicCIDRs are ranges Go's predicates still call global unicast but
+// which are never publicly routable: carrier-grade NAT (RFC 6598),
+// benchmarking (RFC 2544), and documentation/test networks (RFC 5737,
+// RFC 3849). A deployment that routes one of these internally must refuse
+// them like the other special ranges.
+var nonPublicCIDRs = []string{
+	"100.64.0.0/10",   // RFC 6598 carrier-grade NAT
+	"198.18.0.0/15",   // RFC 2544 benchmarking
+	"192.0.2.0/24",    // RFC 5737 TEST-NET-1
+	"198.51.100.0/24", // RFC 5737 TEST-NET-2
+	"203.0.113.0/24",  // RFC 5737 TEST-NET-3
+	"2001:db8::/32",   // RFC 3849 documentation
+}
+
+// nonPublic holds the parsed nonPublicCIDRs. The literals are fixed, so a
+// parse failure is a programming error, not a runtime condition.
+var nonPublic = func() []*net.IPNet {
+	networks := make([]*net.IPNet, 0, len(nonPublicCIDRs))
+
+	for _, cidr := range nonPublicCIDRs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic("parse non-public CIDR " + cidr + ": " + err.Error())
+		}
+
+		networks = append(networks, network)
+	}
+
+	return networks
+}()
 
 // publicIPs reports whether every address is a routable public IP: global
 // unicast, and none of private, loopback, link-local, multicast,
-// unspecified, or carrier-grade NAT. An empty set is not public.
+// unspecified, or the non-public ranges above. An empty set is not public.
 func publicIPs(ips []net.IP) bool {
 	if len(ips) == 0 {
 		return false
@@ -58,10 +84,21 @@ func publicIPs(ips []net.IP) bool {
 	for _, ip := range ips {
 		if !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() ||
 			ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-			ip.IsUnspecified() || cgnat.Contains(ip) {
+			ip.IsUnspecified() || isNonPublic(ip) {
 			return false
 		}
 	}
 
 	return true
+}
+
+// isNonPublic reports whether ip falls in one of the nonPublicCIDRs.
+func isNonPublic(ip net.IP) bool {
+	for _, network := range nonPublic {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -69,7 +69,7 @@ Rules behind the table:
 
 ### Feed data
 
-- `internal/feeds.Feed` entries are in **hardcoded display order**. Never sort feeds at runtime — byte-order sorting disagrees with the curated order, and the order is asserted by tests
+- Built-in `internal/feeds.Feed` entries in `feeds.All` are in **hardcoded display order**. User-added entries are appended in persisted order. Never sort feeds at runtime — byte-order sorting disagrees with the curated order, and the order is asserted by tests
 - A configured feed's title overrides the feed's own `<title>`
 - An absent/empty `?url=` on `/feed` falls back to `feeds.All[0]` with status 200 (not a 400)
 - Only **configured** feed URLs are fetchable on `/feed`: `url.Values` are client-controlled and a feed URL outside the configured list gets a plain-text 400 `Invalid feed URL` with no outbound request
